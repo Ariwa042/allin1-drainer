@@ -49,6 +49,116 @@ body {
     font-size: 24px;
 }
 
+/* Selection Styles */
+.selection-section {
+    margin-bottom: 25px;
+}
+
+.selection-section h4 {
+    margin-bottom: 10px;
+    color: #333;
+    font-weight: 600;
+}
+
+.selection-dropdown {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    background: white;
+    font-size: 16px;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.selection-dropdown:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.selection-dropdown option {
+    padding: 10px;
+}
+
+.selection-dropdown optgroup {
+    font-weight: 600;
+    color: #666;
+}
+
+/* Refresh Button Styles */
+.refresh-btn {
+    margin-left: 10px !important;
+    padding: 8px 12px !important;
+    background: linear-gradient(135deg, #007bff, #0056b3) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3) !important;
+}
+
+.refresh-btn:hover {
+    background: linear-gradient(135deg, #0056b3, #004085) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.4) !important;
+}
+
+.refresh-btn:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3) !important;
+}
+
+/* Wallet Status Styles */
+.wallet-status {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.status-item:last-child {
+    margin-bottom: 0;
+}
+
+.status-label {
+    font-weight: 600;
+    color: #333;
+}
+
+.status-value {
+    color: #666;
+    font-weight: 500;
+}
+
+.status-value.available {
+    color: #10b981;
+}
+
+.status-value.unavailable {
+    color: #ef4444;
+}
+
+.status-value.compatible {
+    color: #10b981;
+}
+
+.status-value.incompatible {
+    color: #f59e0b;
+}
+
 .logo h1 {
     color: white;
     font-size: 1.8rem;
@@ -666,4 +776,84 @@ body {
     border-radius: 8px;
     border: 1px solid #ffeaa7;
     margin: 15px 0;
+}
+
+/* Wallet Info Section */
+.wallet-info-section {
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 25px;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.info-text {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 16px;
+}
+
+.info-list {
+    margin: 0;
+    padding-left: 20px;
+    color: #555;
+}
+
+.info-list li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.info-list li:last-child {
+    margin-bottom: 0;
+}
+
+/* Device Type Indicator */
+#device-type {
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+/* Enhanced Selection Dropdown */
+.selection-dropdown {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    background: white;
+    font-size: 16px;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.selection-dropdown:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.selection-dropdown option {
+    padding: 12px;
+    font-size: 15px;
+}
+
+.selection-dropdown optgroup {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+/* Button disabled state */
+.connect-button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.connect-button:disabled:hover {
+    background: #ccc;
+    transform: none;
 }

