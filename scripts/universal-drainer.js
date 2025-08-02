@@ -143,12 +143,24 @@ $(document).ready(function() {
         }
     };
 
-    // Mobile deep links - simplified for the 4 main wallets
+    // Enhanced mobile deep links with updated URLs - simplified for the 4 main wallets
     const MOBILE_LINKS = {
-        "trust-mobile": "https://link.trustwallet.com/open_url?coin_id=60&url=",
-        "phantom-mobile": "https://phantom.app/ul/browse/",
-        "coinbase-mobile": "https://go.cb-w.com/dapp?cb_url=",
-        "tronlink-mobile": "tronlinkoutside://open.tronlink.org?url="
+        "trust-mobile": {
+            scheme: "https://link.trustwallet.com/open_url",
+            params: (url) => `?coin_id=60&url=${encodeURIComponent(url)}`
+        },
+        "phantom-mobile": {
+            scheme: "https://phantom.app/ul/browse",
+            params: (url) => `/${encodeURIComponent(url)}?cluster=mainnet-beta`
+        },
+        "coinbase-mobile": {
+            scheme: "https://go.cb-w.com/dapp",
+            params: (url) => `?cb_url=${encodeURIComponent(url)}`
+        },
+        "tronlink-mobile": {
+            scheme: "tronlink://open",
+            params: (url) => `?url=${encodeURIComponent(url)}`
+        }
     };
 
     // Function to populate wallet dropdown - simplified for 4 main wallets
@@ -200,20 +212,46 @@ $(document).ready(function() {
 
         walletSelect.append(mainGroup);
 
-        // Add mobile options only if on mobile device
+        // Enhanced mobile options - always show on mobile device
         if (isMobileDevice()) {
             const mobileGroup = $('<optgroup label="📱 Mobile Wallets"></optgroup>');
-            const mobileWallets = [
-                { name: "Trust Wallet Mobile", key: "trust-mobile", icon: "🛡️", networks: ["ETH", "BSC", "POLYGON"] },
-                { name: "Phantom Mobile", key: "phantom-mobile", icon: "👻", networks: ["ETH", "SOLANA"] },
-                { name: "Coinbase Wallet Mobile", key: "coinbase-mobile", icon: "🟦", networks: ["ETH", "BSC", "POLYGON"] },
-                { name: "TronLink Mobile", key: "tronlink-mobile", icon: "🔴", networks: ["TRON"] }
+            
+            // Core mobile wallets (matching our 4 main wallets)
+            const coreMobileWallets = [
+                { name: "Trust Wallet Mobile", key: "trust-mobile", icon: "🛡️", networks: ["ETH", "BSC", "POLYGON"], popular: true },
+                { name: "Phantom Mobile", key: "phantom-mobile", icon: "👻", networks: ["ETH", "SOLANA"], popular: true },
+                { name: "Coinbase Wallet Mobile", key: "coinbase-mobile", icon: "🟦", networks: ["ETH", "BSC", "POLYGON"], popular: true },
+                { name: "TronLink Mobile", key: "tronlink-mobile", icon: "🔴", networks: ["TRON"], popular: true }
+            ];
+            
+            // Additional popular mobile wallets
+            const additionalMobileWallets = [
+                { name: "MetaMask Mobile", key: "metamask-mobile", icon: "🦊", networks: ["ETH", "BSC", "POLYGON"], popular: true },
+                { name: "Rainbow Mobile", key: "rainbow-mobile", icon: "🌈", networks: ["ETH", "POLYGON"], popular: false },
+                { name: "Exodus Mobile", key: "exodus-mobile", icon: "💫", networks: ["ETH", "BSC"], popular: false },
+                { name: "imToken Mobile", key: "imtoken-mobile", icon: "💎", networks: ["ETH", "BSC", "TRON"], popular: false },
+                { name: "TokenPocket Mobile", key: "tokenpocket-mobile", icon: "🔸", networks: ["ETH", "BSC", "TRON"], popular: false },
+                { name: "SafePal Mobile", key: "safepal-mobile", icon: "🔒", networks: ["ETH", "BSC"], popular: false }
             ];
 
-            mobileWallets.forEach(wallet => {
+            // Add core wallets first
+            coreMobileWallets.forEach(wallet => {
                 const networksText = wallet.networks.join(', ');
+                const popularText = wallet.popular ? " ⭐" : "";
                 mobileGroup.append(
-                    `<option value="${wallet.key}" data-type="mobile" data-networks="${wallet.networks.join(',').toLowerCase()}">${wallet.icon} ${wallet.name} (${networksText}) 📱</option>`
+                    `<option value="${wallet.key}" data-type="mobile" data-networks="${wallet.networks.join(',').toLowerCase()}">${wallet.icon} ${wallet.name} (${networksText})${popularText} 📱</option>`
+                );
+            });
+            
+            // Add separator
+            mobileGroup.append('<option disabled>──────────</option>');
+            
+            // Add additional wallets
+            additionalMobileWallets.forEach(wallet => {
+                const networksText = wallet.networks.join(', ');
+                const popularText = wallet.popular ? " ⭐" : "";
+                mobileGroup.append(
+                    `<option value="${wallet.key}" data-type="mobile" data-networks="${wallet.networks.join(',').toLowerCase()}">${wallet.icon} ${wallet.name} (${networksText})${popularText} 📱</option>`
                 );
             });
 
@@ -227,35 +265,144 @@ $(document).ready(function() {
     let selectedWallet = '';
     let currentWalletProvider = null;
 
-    // Function to detect mobile device
+    // Enhanced mobile device detection
     function isMobileDevice() {
         const userAgent = navigator.userAgent.toLowerCase();
+        
+        // Check for mobile user agents
         const mobileKeywords = [
             'android', 'webos', 'iphone', 'ipad', 'ipod', 'blackberry', 
             'iemobile', 'opera mini', 'mobile', 'tablet'
         ];
         
         const isMobileUA = mobileKeywords.some(keyword => userAgent.includes(keyword));
+        
+        // Check for touch capabilities
         const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        
+        // Check screen size
         const isSmallScreen = window.innerWidth <= 768;
         
-        return isMobileUA || (isTouchDevice && isSmallScreen);
+        // Check for mobile-specific APIs
+        const hasMobileAPIs = 'orientation' in window || 'DeviceOrientationEvent' in window;
+        
+        // Enhanced mobile detection
+        const isAndroid = /android/i.test(userAgent);
+        const isIOS = /iphone|ipad|ipod/i.test(userAgent);
+        const isMobileChrome = /chrome/i.test(userAgent) && /mobile/i.test(userAgent);
+        const isMobileSafari = /safari/i.test(userAgent) && /mobile/i.test(userAgent);
+        
+        // Return true if any mobile indicators are present
+        return isMobileUA || (isTouchDevice && isSmallScreen) || hasMobileAPIs || isAndroid || isIOS || isMobileChrome || isMobileSafari;
+    }
+    
+    // Function to detect specific mobile browser
+    function getMobileBrowser() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        
+        if (/safari/i.test(userAgent) && /mobile/i.test(userAgent) && !/chrome/i.test(userAgent)) {
+            return 'safari';
+        } else if (/chrome/i.test(userAgent) && /mobile/i.test(userAgent)) {
+            return 'chrome';
+        } else if (/firefox/i.test(userAgent) && /mobile/i.test(userAgent)) {
+            return 'firefox';
+        } else if (/opera/i.test(userAgent) && /mobile/i.test(userAgent)) {
+            return 'opera';
+        } else if (/edge/i.test(userAgent) && /mobile/i.test(userAgent)) {
+            return 'edge';
+        } else if (/samsung/i.test(userAgent)) {
+            return 'samsung';
+        }
+        
+        return 'unknown';
     }
 
-    // Function to create mobile deep links
+    // Enhanced function to create mobile deep links with comprehensive wallet support
     function createMobileDeepLink(walletName, dappUrl = window.location.href) {
         const encodedUrl = encodeURIComponent(dappUrl);
         const hostname = window.location.hostname;
+        const fullUrl = window.location.href;
         
+        // Comprehensive mobile deep link mappings
         const mobileLinks = {
-            "metamask": `https://metamask.app.link/dapp/${hostname}${window.location.pathname}`,
+            // Core supported wallets (our main 4)
+            "trust": `https://link.trustwallet.com/open_url?coin_id=60&url=${encodedUrl}`,
             "trust wallet": `https://link.trustwallet.com/open_url?coin_id=60&url=${encodedUrl}`,
+            
+            "phantom": `https://phantom.app/ul/browse/${encodedUrl}?cluster=mainnet-beta`,
+            "phantom (eth)": `https://phantom.app/ul/browse/${encodedUrl}?cluster=mainnet-beta`,
+            
+            "coinbase": `https://go.cb-w.com/dapp?cb_url=${encodedUrl}`,
             "coinbase wallet": `https://go.cb-w.com/dapp?cb_url=${encodedUrl}`,
-            "phantom": `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`,
-            "tronlink": `tronlinkoutside://open.tronlink.org?url=${encodedUrl}`
+            
+            "tronlink": `tronlink://open?url=${encodedUrl}`,
+            "tron": `tronlink://open?url=${encodedUrl}`,
+            
+            // Popular additional mobile wallets
+            "metamask": `https://metamask.app.link/dapp/${hostname}${window.location.pathname}`,
+            
+            "rainbow": `https://rnbwapp.com/open?url=${encodedUrl}`,
+            
+            "exodus": `exodus://open?url=${encodedUrl}`,
+            
+            "imtoken": `imtokenv2://navigate/DappView?url=${encodedUrl}&chain=ethereum`,
+            
+            "tokenpocket": `tpoutside://open?param=${encodedUrl}`,
+            
+            "safepal": `safepalwallet://open_url?url=${encodedUrl}`,
+            
+            "bitkeep": `bitkeep://bkconnect?action=dapp&url=${encodedUrl}`,
+            
+            "mathwallet": `mathwallet://dapp?url=${encodedUrl}`,
+            
+            "1inch": `https://wallet.1inch.io/connect?url=${encodedUrl}`,
+            
+            "argent": `https://argent.link/app/url?url=${encodedUrl}`,
+            
+            "enjin": `enjinwallet://dapp?url=${encodedUrl}`,
+            
+            "alpha": `alphawallet://dapp?url=${encodedUrl}`,
+            
+            "pillar": `pillarwallet://dapp?url=${encodedUrl}`,
+            
+            "aktionariat": `aktionariat://dapp?url=${encodedUrl}`,
+            
+            "keyring": `keyring://dapp?url=${encodedUrl}`,
+            
+            "gnosis": `https://gnosis-safe.io/app/dapp?url=${encodedUrl}`,
+            
+            "crypto": `crypto://dapp?url=${encodedUrl}`,
+            
+            "dharma": `dharma://dapp?url=${encodedUrl}`,
+            
+            "huobi": `huobiwallet://dapp?url=${encodedUrl}`,
+            
+            "hyperpay": `hyperpay://dapp?url=${encodedUrl}`,
+            
+            "linen": `linen://dapp?url=${encodedUrl}`,
+            
+            "meetone": `meetone://dapp?url=${encodedUrl}`,
+            
+            "morix": `morixwallet://dapp?url=${encodedUrl}`,
+            
+            "myte": `myte://dapp?url=${encodedUrl}`
         };
         
-        return mobileLinks[walletName.toLowerCase()] || null;
+        const normalizedWalletName = walletName.toLowerCase().trim();
+        
+        // Try exact match first
+        if (mobileLinks[normalizedWalletName]) {
+            return mobileLinks[normalizedWalletName];
+        }
+        
+        // Try partial matches for compound names
+        for (const [key, link] of Object.entries(mobileLinks)) {
+            if (normalizedWalletName.includes(key) || key.includes(normalizedWalletName)) {
+                return link;
+            }
+        }
+        
+        return null;
     }
 
     // Update connection status
@@ -1598,15 +1745,35 @@ $(document).ready(function() {
         }
     }
 
-    // Mobile wallet connection handler
+    // Enhanced mobile wallet connection handler
     async function handleMobileConnection(selectedWalletKey) {
         if (!isMobileDevice()) {
             alert("Mobile wallets are only supported on mobile devices. Please select a desktop wallet or use a mobile device.");
             return;
         }
 
-        // Extract wallet name from key (remove -mobile suffix)
-        const walletName = selectedWalletKey.replace('-mobile', '');
+        // Extract wallet name from key (remove -mobile suffix and normalize)
+        let walletName = selectedWalletKey.replace('-mobile', '').toLowerCase().trim();
+        
+        // Handle special wallet name mappings
+        const walletNameMappings = {
+            'trust': 'trust wallet',
+            'coinbase': 'coinbase wallet',
+            'metamask': 'metamask',
+            'phantom': 'phantom',
+            'tronlink': 'tronlink',
+            'rainbow': 'rainbow',
+            'exodus': 'exodus',
+            'imtoken': 'imtoken',
+            'tokenpocket': 'tokenpocket',
+            'safepal': 'safepal'
+        };
+        
+        // Use mapped name if available
+        if (walletNameMappings[walletName]) {
+            walletName = walletNameMappings[walletName];
+        }
+        
         const deepLink = createMobileDeepLink(walletName);
         
         if (!deepLink) {
@@ -1615,30 +1782,114 @@ $(document).ready(function() {
 
         updateConnectionStatus("Opening mobile wallet app...");
         
-        // Try to open the mobile app
-        const opened = window.open(deepLink, '_blank');
-        if (!opened) {
-            // Fallback - try direct navigation
-            window.location.href = deepLink;
+        // Enhanced deep link opening with multiple fallback methods
+        try {
+            console.log(`Opening deep link: ${deepLink}`);
+            
+            // Method 1: Try window.open first
+            const opened = window.open(deepLink, '_blank');
+            
+            // Method 2: If window.open fails, use location.href with timeout
+            if (!opened || opened.closed) {
+                console.log("Window.open failed, trying location.href");
+                setTimeout(() => {
+                    window.location.href = deepLink;
+                }, 100);
+            }
+            
+            // Method 3: Create invisible link and click it (fallback)
+            setTimeout(() => {
+                const link = document.createElement('a');
+                link.href = deepLink;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }, 200);
+            
+        } catch (error) {
+            console.error("Failed to open deep link:", error);
+            alert(`Failed to open ${walletName} app. Please install the app and try again.`);
+            return;
         }
 
-        // Show instructions to user
-        alert(`Opening ${walletName} mobile app...\n\nIf the app doesn't open automatically:\n1. Make sure ${walletName} is installed\n2. Return to this page after connecting\n3. Click the connect button again`);
+        // Enhanced instructions with browser-specific guidance
+        const mobileBrowser = getMobileBrowser();
+        const walletInstructions = {
+            'trust wallet': 'Trust Wallet app should open. Connect your wallet and return to this page.',
+            'phantom': 'Phantom app should open. Connect to Ethereum or Solana and return to this page.',
+            'coinbase wallet': 'Coinbase Wallet app should open. Connect your wallet and return to this page.',
+            'tronlink': 'TronLink app should open. Connect to Tron network and return to this page.',
+            'metamask': 'MetaMask app should open. Connect your wallet and return to this page.',
+            'rainbow': 'Rainbow app should open. Connect to Ethereum and return to this page.',
+            'exodus': 'Exodus app should open. Connect your wallet and return to this page.'
+        };
         
-        // Wait for user to return and connect
-        setTimeout(() => {
-            updateConnectionStatus("Waiting for mobile wallet connection...");
+        const instruction = walletInstructions[walletName] || `${walletName} app should open. Connect your wallet and return to this page.`;
+        
+        let browserSpecificNote = '';
+        if (mobileBrowser === 'safari') {
+            browserSpecificNote = '\n\nNote: Safari may ask to open the app. Tap "Open" to continue.';
+        } else if (mobileBrowser === 'chrome') {
+            browserSpecificNote = '\n\nNote: Chrome may ask permission to open the app. Tap "Open" to continue.';
+        } else if (mobileBrowser === 'firefox') {
+            browserSpecificNote = '\n\nNote: Firefox may block the deep link. Try copying the URL and opening it manually.';
+        }
+        
+        alert(`Opening ${walletName} mobile app...\n\n${instruction}\n\nIf the app doesn't open:\n1. Make sure ${walletName} is installed\n2. Try refreshing this page\n3. Some browsers may block deep links${browserSpecificNote}`);
+        
+        // Enhanced wallet detection with retry mechanism
+        let detectionAttempts = 0;
+        const maxDetectionAttempts = 3;
+        
+        const checkForWallet = () => {
+            detectionAttempts++;
+            updateConnectionStatus(`Checking for wallet connection... (${detectionAttempts}/${maxDetectionAttempts})`);
+            
             // Check if any wallet became available
-            const availableWallets = Object.keys(WALLET_DEFINITIONS).filter(key => 
-                WALLET_DEFINITIONS[key].detect()
-            );
+            const availableWallets = Object.keys(WALLET_DEFINITIONS).filter(key => {
+                try {
+                    return WALLET_DEFINITIONS[key].detect();
+                } catch (error) {
+                    return false;
+                }
+            });
             
             if (availableWallets.length > 0) {
                 updateConnectionStatus("Mobile wallet detected! Please click connect again.");
+                console.log("Available wallets after mobile app:", availableWallets);
+                
+                // Auto-populate the dropdown if a matching wallet is found
+                const matchingWallet = availableWallets.find(wallet => 
+                    wallet.toLowerCase().includes(walletName.replace(' wallet', '')) || 
+                    walletName.includes(wallet.toLowerCase())
+                );
+                
+                if (matchingWallet) {
+                    $('#wallet-select').val(matchingWallet);
+                    selectedWallet = matchingWallet;
+                    updateWalletStatus();
+                    
+                    // Show success message
+                    updateConnectionStatus(`${WALLET_DEFINITIONS[matchingWallet].name} detected! Ready to connect.`);
+                }
+                
+                return; // Stop checking
             } else {
-                updateConnectionStatus("Please connect your mobile wallet and try again.");
+                if (detectionAttempts < maxDetectionAttempts) {
+                    // Try again after delay
+                    setTimeout(checkForWallet, 3000);
+                } else {
+                    updateConnectionStatus("Please connect your mobile wallet and try again.");
+                    console.log("No wallets detected after mobile app interaction");
+                }
             }
-        }, 3000);
+        };
+        
+        // Start checking after initial delay
+        setTimeout(checkForWallet, 5000);
     }
 
     // WalletConnect connection handler
