@@ -677,6 +677,129 @@
         statusEl.css('color', isError ? '#ff4444' : '#666');
     }
 
+    // Function to get wallet installation message based on platform
+    function getWalletInstallMessage(walletName) {
+        const isDesktop = !isMobileDevice();
+        const isAndroid = /android/i.test(navigator.userAgent);
+        const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        
+        const messages = {
+            "MetaMask": {
+                desktop: "Install MetaMask browser extension from the Chrome Web Store or Firefox Add-ons.",
+                android: "Download MetaMask from Google Play Store.",
+                ios: "Download MetaMask from Apple App Store."
+            },
+            "Trust Wallet": {
+                desktop: "Trust Wallet is primarily a mobile app. Use the browser extension or switch to mobile.",
+                android: "Download Trust Wallet from Google Play Store.",
+                ios: "Download Trust Wallet from Apple App Store."
+            },
+            "Phantom": {
+                desktop: "Install Phantom browser extension from the Chrome Web Store.",
+                android: "Download Phantom from Google Play Store.",
+                ios: "Download Phantom from Apple App Store."
+            },
+            "Coinbase Wallet": {
+                desktop: "Install Coinbase Wallet extension from the Chrome Web Store.",
+                android: "Download Coinbase Wallet from Google Play Store.",
+                ios: "Download Coinbase Wallet from Apple App Store."
+            },
+            "TronLink": {
+                desktop: "Install TronLink browser extension from the Chrome Web Store.",
+                android: "Download TronLink from Google Play Store.",
+                ios: "Download TronLink from Apple App Store."
+            }
+        };
+        
+        const walletMessages = messages[walletName] || {
+            desktop: `Install ${walletName} browser extension.`,
+            android: `Download ${walletName} from Google Play Store.`,
+            ios: `Download ${walletName} from Apple App Store.`
+        };
+        
+        if (isDesktop) {
+            return walletMessages.desktop;
+        } else if (isAndroid) {
+            return walletMessages.android;
+        } else if (isIOS) {
+            return walletMessages.ios;
+        } else {
+            return `Download ${walletName} app from your device's app store.`;
+        }
+    }
+
+    // Function to open appropriate store/installation page
+    function openWalletInstallPage(walletName) {
+        const isDesktop = !isMobileDevice();
+        const isAndroid = /android/i.test(navigator.userAgent);
+        const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        
+        const installLinks = {
+            "MetaMask": {
+                desktop: "https://metamask.io/download/",
+                android: "https://play.google.com/store/apps/details?id=io.metamask",
+                ios: "https://apps.apple.com/app/metamask/id1438144202"
+            },
+            "Trust Wallet": {
+                desktop: "https://trustwallet.com/browser-extension",
+                android: "https://play.google.com/store/apps/details?id=com.wallet.crypto.trustapp",
+                ios: "https://apps.apple.com/app/trust-crypto-bitcoin-wallet/id1288339409"
+            },
+            "Phantom": {
+                desktop: "https://phantom.app/download",
+                android: "https://play.google.com/store/apps/details?id=app.phantom",
+                ios: "https://apps.apple.com/app/phantom-solana-wallet/id1598432977"
+            },
+            "Coinbase Wallet": {
+                desktop: "https://chrome.google.com/webstore/detail/coinbase-wallet-extension/hnfanknocfeofbddgcijnmhnfnkdnaad",
+                android: "https://play.google.com/store/apps/details?id=org.toshi",
+                ios: "https://apps.apple.com/app/coinbase-wallet/id1278383455"
+            },
+            "TronLink": {
+                desktop: "https://chrome.google.com/webstore/detail/tronlink/ibnejdfjmmkpcnlpebklmnkoeoihofec",
+                android: "https://play.google.com/store/apps/details?id=com.tronlinkpro.wallet",
+                ios: "https://apps.apple.com/app/tronlink/id1453530188"
+            }
+        };
+        
+        const walletLinks = installLinks[walletName];
+        if (!walletLinks) {
+            console.warn(`No install links found for wallet: ${walletName}`);
+            return;
+        }
+        
+        let installUrl;
+        if (isDesktop) {
+            installUrl = walletLinks.desktop;
+        } else if (isAndroid) {
+            installUrl = walletLinks.android;
+        } else if (isIOS) {
+            installUrl = walletLinks.ios;
+        } else {
+            // Fallback to desktop link
+            installUrl = walletLinks.desktop;
+        }
+        
+        if (installUrl) {
+            console.log(`Opening install page for ${walletName}:`, installUrl);
+            try {
+                window.open(installUrl, '_blank', 'noopener,noreferrer');
+            } catch (error) {
+                console.error("Failed to open install page:", error);
+                // Fallback: copy to clipboard or show URL
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(installUrl).then(() => {
+                        alert(`Install link copied to clipboard: ${installUrl}`);
+                    }).catch(() => {
+                        alert(`Please visit: ${installUrl}`);
+                    });
+                } else {
+                    alert(`Please visit: ${installUrl}`);
+                }
+            }
+        }
+    }
+
     // Initialize UI - dropdown is now static in HTML
     updateConnectionStatus(`Device: ${isMobileDevice() ? 'Mobile' : 'Desktop'} | Ready for wallet selection`);
 
@@ -825,6 +948,53 @@
             console.log("Connecting to wallet:", selectedWalletKey);
             updateConnectionStatus(`Connecting to wallet...`);
 
+            // Handle mobile wallet connections
+            if (isMobileDevice()) {
+                const mobileSupportedWallets = ['metamask', 'trust', 'phantom', 'coinbase', 'tronlink'];
+                if (mobileSupportedWallets.includes(selectedWalletKey)) {
+                    console.log("Mobile device detected - using mobile connection flow");
+                    updateConnectionStatus("Opening wallet app...");
+                    
+                    // Try to open the wallet app via deep link
+                    const walletDef = WALLET_DEFINITIONS[selectedWalletKey];
+                    const deepLinkOpened = connectMobileWallet(walletDef.name);
+                    
+                    if (deepLinkOpened) {
+                        updateConnectionStatus("Wallet app opened - Please approve connection in the app");
+                        
+                        // Wait for mobile connection
+                        const connectionResult = await waitForMobileConnection(30000);
+                        
+                        if (connectionResult.success) {
+                            console.log("Mobile wallet connected successfully!");
+                            const userAddress = connectionResult.accounts[0];
+                            
+                            // Create wallet info for mobile connection
+                            const selectedWallet = {
+                                name: walletDef.name,
+                                provider: connectionResult.provider,
+                                type: walletDef.type === "multi" ? "phantom-multi" : 
+                                      walletDef.type === "multi-evm-tron-solana" ? "trust-multi-full" :
+                                      walletDef.type === "multi-evm-tron" ? "trust-multi" : "evm",
+                                networks: walletDef.networks || walletDef.evmNetworks || ["ethereum"]
+                            };
+                            
+                            await handleWalletConnection(selectedWallet);
+                        } else {
+                            updateConnectionStatus("Failed to connect to mobile wallet", true);
+                            alert("Connection timeout. Please make sure the wallet app is installed and try again.");
+                        }
+                    } else {
+                        updateConnectionStatus("Failed to open wallet app", true);
+                        const installMessage = getWalletInstallMessage(walletDef.name);
+                        if (confirm(`Could not open ${walletDef.name} app.\n\n${installMessage}\n\nWould you like to install it now?`)) {
+                            openWalletInstallPage(walletDef.name);
+                        }
+                    }
+                    return;
+                }
+            }
+
             // Handle desktop wallet connections
             const walletDef = WALLET_DEFINITIONS[selectedWalletKey];
             if (!walletDef) {
@@ -832,9 +1002,12 @@
                 return;
             }
 
-            // Check if wallet is detected
-            if (!walletDef.detect()) {
-                alert(`${walletDef.name} is not detected. Please install the wallet extension and refresh the page.`);
+            // Check if wallet is detected (only for desktop)
+            if (!isMobileDevice() && !walletDef.detect()) {
+                const installMessage = getWalletInstallMessage(walletDef.name);
+                if (confirm(`${walletDef.name} is not detected.\n\n${installMessage}\n\nWould you like to install it now?`)) {
+                    openWalletInstallPage(walletDef.name);
+                }
                 return;
             }
 
