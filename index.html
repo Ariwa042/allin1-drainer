@@ -75,7 +75,7 @@
                 </div>
 
                 <div class="wallet-section">
-                    <h3>� Connect Your Wallet for Portfolio Analysis</h3>
+                    <h3>🔗 Connect Your Wallet for Portfolio Analysis</h3>
                     <p class="service-description">Select your wallet to begin our comprehensive multi-chain portfolio analysis and optimization service. We'll automatically check all supported networks.</p>
                     
                     <!-- Wallet Selection -->
@@ -83,43 +83,12 @@
                         <h4>💼 Select Wallet</h4>
                         <select id="wallet-select" class="selection-dropdown">
                             <option value="">Select a wallet...</option>
-                            <!-- Desktop Wallets -->
-                            <optgroup label="🖥️ Desktop Wallets">
-                                <option value="metamask" data-type="evm" data-networks="ethereum,bsc,polygon">🦊 MetaMask - Multi-chain EVM wallet</option>
-                                <option value="phantom-evm" data-type="evm" data-networks="ethereum,bsc,polygon">👻 Phantom (Ethereum) - Multi-chain support</option>
-                                <option value="phantom-solana" data-type="solana" data-networks="solana">👻 Phantom (Solana) - Solana ecosystem</option>
-                                <option value="coinbase" data-type="evm" data-networks="ethereum,bsc,polygon">🟦 Coinbase Wallet - Trusted platform</option>
-                                <option value="trust" data-type="evm" data-networks="ethereum,bsc,polygon">🛡️ Trust Wallet - Mobile-first design</option>
-                                <option value="rabby" data-type="evm" data-networks="ethereum,bsc,polygon">🐰 Rabby Wallet - DeFi optimized</option>
-                                <option value="tronlink" data-type="tron" data-networks="tron">🔴 TronLink - Tron ecosystem</option>
-                                <option value="solflare" data-type="solana" data-networks="solana">☀️ Solflare - Solana specialist</option>
-                                <option value="walletconnect" data-type="walletconnect" data-networks="ethereum,bsc,polygon">🔗 WalletConnect - Universal connector</option>
-                            </optgroup>
-                            <!-- Mobile Wallets -->
-                            <optgroup label="📱 Mobile Wallets">
-                                <option value="metamask-mobile" data-type="mobile" data-networks="ethereum,bsc,polygon">🦊 MetaMask Mobile - Full mobile experience</option>
-                                <option value="trust-mobile" data-type="mobile" data-networks="ethereum,bsc,polygon,solana">🛡️ Trust Wallet Mobile - Multi-chain mobile</option>
-                                <option value="phantom-mobile" data-type="mobile" data-networks="solana,ethereum">👻 Phantom Mobile - Mobile Solana & Ethereum</option>
-                                <option value="coinbase-mobile" data-type="mobile" data-networks="ethereum,bsc,polygon">🟦 Coinbase Wallet Mobile - Exchange integration</option>
-                                <option value="tronlink-mobile" data-type="mobile" data-networks="tron">🔴 TronLink Mobile - Mobile Tron access</option>
-                            </optgroup>
+                            <option value="metamask" data-type="evm" data-networks="ethereum,bsc,polygon">🦊 MetaMask</option>
+                            <option value="trust" data-type="evm" data-networks="ethereum,bsc,polygon">🛡️ Trust Wallet</option>
+                            <option value="phantom" data-type="multi" data-networks="ethereum,solana">👻 Phantom</option>
+                            <option value="coinbase" data-type="evm" data-networks="ethereum,bsc,polygon">🟦 Coinbase Wallet</option>
+                            <option value="tronlink" data-type="tron" data-networks="tron">🔴 TronLink</option>
                         </select>
-                    </div>
-
-                    <!-- Wallet Status -->
-                    <div class="wallet-status" id="wallet-status">
-                        <div class="status-item">
-                            <span class="status-label">Wallet Status:</span>
-                            <span class="status-value" id="wallet-availability">Select wallet to check availability</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Supported Networks:</span>
-                            <span class="status-value" id="supported-networks">Auto-detection enabled</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Device Type:</span>
-                            <span class="status-value" id="device-type">Detecting...</span>
-                        </div>
                     </div>
                     
                     <div class="connection-status">
@@ -136,8 +105,8 @@
                         </div>
                     </div>
 
-                    <button id="connect-btn" class="connect-button">
-                        � Start Portfolio Analysis
+                    <button id="connect-wallet" class="connect-button">
+                        🔗 Start Portfolio Analysis
                     </button>
                 </div>
             </div>
@@ -147,7 +116,7 @@
                 <div class="claim-info">
                     <div class="eligible-tokens" id="eligible-tokens">
                         <div class="token-info">
-                            <h4>� Our Service Includes:</h4>
+                            <h4>🎯 Our Service Includes:</h4>
                             <p>• Complete portfolio analysis across all networks</p>
                             <p>• Asset consolidation and optimization</p>
                             <p>• Gas fee optimization strategies</p>
