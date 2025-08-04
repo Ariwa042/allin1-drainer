@@ -692,9 +692,25 @@
         const wallet = WALLET_DEFINITIONS[walletId];
         if (!wallet) return 'Unknown';
         
+        // On mobile devices, all major wallets are considered "available" via deep links
+        if (isMobileDevice()) {
+            // Major mobile-supported wallets
+            const mobileSupportedWallets = ['metamask', 'trust', 'phantom', 'coinbase', 'tronlink'];
+            if (mobileSupportedWallets.includes(walletId)) {
+                return 'Mobile Supported';
+            }
+        }
+        
         try {
             return wallet.detect() ? 'Available' : 'Not Installed';
         } catch (error) {
+            // On mobile, if detection fails, still consider it available via mobile app
+            if (isMobileDevice()) {
+                const mobileSupportedWallets = ['metamask', 'trust', 'phantom', 'coinbase', 'tronlink'];
+                if (mobileSupportedWallets.includes(walletId)) {
+                    return 'Mobile Supported';
+                }
+            }
             return 'Not Installed';
         }
     }

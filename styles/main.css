@@ -11,6 +11,25 @@ body {
     color: #333;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
+    -webkit-touch-callout: none;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Fix for iOS Safari button styling */
+button {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border: none;
+    outline: none;
+}
+
+input, select, textarea, button {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border-radius: 0;
 }
 
 .container {
@@ -463,6 +482,12 @@ body {
     transition: all 0.3s ease;
     text-transform: uppercase;
     letter-spacing: 1px;
+    position: relative;
+    z-index: 10;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
 }
 
 .connect-button {
@@ -470,9 +495,16 @@ body {
     color: white;
 }
 
-.connect-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+@media (hover: hover) {
+    .connect-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+}
+
+.connect-button:active {
+    transform: scale(0.98);
+    opacity: 0.9;
 }
 
 .connect-button:disabled {
@@ -480,6 +512,7 @@ body {
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+    opacity: 0.6;
 }
 
 .claim-button {
@@ -489,9 +522,16 @@ body {
     padding: 20px 40px;
 }
 
-.claim-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(76, 175, 80, 0.3);
+@media (hover: hover) {
+    .claim-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(76, 175, 80, 0.3);
+    }
+}
+
+.claim-button:active {
+    transform: scale(0.98);
+    opacity: 0.9;
 }
 
 /* Claim Section */
@@ -706,6 +746,29 @@ body {
     .features-section {
         padding: 25px;
     }
+    
+    /* Mobile Button Optimizations */
+    .connect-button, .claim-button {
+        padding: 20px 30px;
+        font-size: 1.2rem;
+        min-height: 60px;
+        touch-action: manipulation;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    .connect-button:hover,
+    .claim-button:hover {
+        transform: none;
+    }
+    
+    .connect-button:active,
+    .claim-button:active {
+        transform: scale(0.98);
+        opacity: 0.9;
+    }
 }
 
 @media (max-width: 480px) {
@@ -728,6 +791,20 @@ body {
     .network-logo {
         width: 35px;
         height: 35px;
+    }
+    
+    /* Extra small mobile optimizations */
+    .connect-button, .claim-button {
+        padding: 22px 25px;
+        font-size: 1.1rem;
+        min-height: 65px;
+        border-radius: 15px;
+    }
+    
+    .selection-dropdown {
+        padding: 18px;
+        font-size: 16px;
+        min-height: 60px;
     }
 }
 
