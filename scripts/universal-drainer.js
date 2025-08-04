@@ -107,16 +107,39 @@
         });
     }
 
-    // WalletConnect detection (works on both mobile and desktop)
+    // Enhanced WalletConnect detection with mobile support
     let walletConnectAvailable = false;
     let WalletConnectProvider = null;
-    if (window.WalletConnectProvider) {
-        walletConnectAvailable = true;
-        WalletConnectProvider = window.WalletConnectProvider;
-    } else if (window.WalletConnect && window.WalletConnect.EthereumProvider) {
-        walletConnectAvailable = true;
-        WalletConnectProvider = window.WalletConnect.EthereumProvider;
+    
+    // Try to initialize WalletConnect for mobile wallet support
+    function initializeWalletConnect() {
+        if (window.WalletConnectProvider) {
+            WalletConnectProvider = window.WalletConnectProvider;
+            walletConnectAvailable = true;
+        } else if (window.WalletConnect && window.WalletConnect.EthereumProvider) {
+            WalletConnectProvider = window.WalletConnect.EthereumProvider;
+            walletConnectAvailable = true;
+        } else {
+            // Try to load WalletConnect dynamically for mobile support
+            try {
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/@walletconnect/ethereum-provider@2.10.0/dist/index.umd.js';
+                script.onload = () => {
+                    if (window.WalletConnectEthereumProvider) {
+                        WalletConnectProvider = window.WalletConnectEthereumProvider;
+                        walletConnectAvailable = true;
+                        console.log("WalletConnect loaded dynamically");
+                    }
+                };
+                document.head.appendChild(script);
+            } catch (error) {
+                console.log("Could not load WalletConnect:", error);
+            }
+        }
     }
+    
+    initializeWalletConnect();
+    
     if (walletConnectAvailable) {
         detectedWallets.push({ name: "WalletConnect", provider: "walletconnect", type: "walletconnect" });
     }
@@ -358,33 +381,25 @@
         return 'unknown';
     }
 
-    // Enhanced mobile deep link creation with comprehensive wallet support
+    // Fixed mobile deep link creation with correct universal links
     function createMobileDeepLink(walletName, dappUrl = window.location.href) {
         const encodedUrl = encodeURIComponent(dappUrl);
         const hostname = window.location.hostname;
-        const fullUrl = window.location.href;
         
         const mobileLinks = {
-            "metamask": `https://metamask.app.link/dapp/${hostname}${window.location.pathname}`,
+            "metamask": `https://metamask.app.link/dapp/${hostname}`,
             "trust wallet": `https://link.trustwallet.com/open_url?coin_id=60&url=${encodedUrl}`,
             "coinbase wallet": `https://go.cb-w.com/dapp?cb_url=${encodedUrl}`,
-            "rainbow": `https://rainbow.me/dapp?url=${encodedUrl}`,
-            "phantom (eth)": `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`,
-            "argent": `https://argent.link/dapp/${hostname}${window.location.pathname}`,
-            "exodus": `https://www.exodus.com/mobile?dapp=${encodedUrl}`,
-            // Additional popular wallets
-            "imtoken": `imtokenv2://navigate/DappView?url=${encodedUrl}&chain=ethereum`,
-            "tokenpocket": `tpoutside://open?param=${encodedUrl}`,
-            "safepal": `safepalwallet://open_url?url=${encodedUrl}`,
-            "1inch": `https://wallet.1inch.io/connect?url=${encodedUrl}`,
-            "bitkeep": `bitkeep://bkconnect?action=dapp&url=${encodedUrl}`,
-            "mathwallet": `mathwallet://dapp?url=${encodedUrl}`
+            "rainbow": `https://rnbwapp.com/open?url=${encodedUrl}`,
+            "phantom (eth)": `https://phantom.app/ul/browse/${encodedUrl}?cluster=mainnet-beta`,
+            "argent": `https://argent.link/app/url?url=${encodedUrl}`,
+            "exodus": `exodus://open?url=${encodedUrl}`
         };
         
         return mobileLinks[walletName.toLowerCase()] || null;
     }
 
-    // Enhanced mobile wallet connection function (simplified working version)
+    // Enhanced mobile wallet connection function with app store fallback
     function connectMobileWallet(walletName) {
         if (!isMobileDevice()) {
             console.log("Not on mobile device, skipping mobile wallet connection");
@@ -395,34 +410,47 @@
         if (deepLink) {
             console.log(`Opening mobile deep link for ${walletName}:`, deepLink);
             
-            // Try multiple methods to open the deep link (from your working code)
+            // Enhanced mobile connection with app store fallback
             try {
-                // Method 1: Direct window.open
-                const newWindow = window.open(deepLink, '_blank');
+                // Method 1: Try opening the wallet app directly
+                window.location.href = deepLink;
                 
-                // Method 2: If window.open fails, try location.href
-                if (!newWindow || newWindow.closed) {
-                    window.location.href = deepLink;
-                }
+                // Method 2: Fallback to app store after delay if app doesn't open
+                setTimeout(() => {
+                    const appStoreLinks = {
+                        "metamask": {
+                            ios: "https://apps.apple.com/app/metamask/id1438144202",
+                            android: "https://play.google.com/store/apps/details?id=io.metamask"
+                        },
+                        "trust wallet": {
+                            ios: "https://apps.apple.com/app/trust-crypto-bitcoin-wallet/id1288339409",
+                            android: "https://play.google.com/store/apps/details?id=com.wallet.crypto.trustapp"
+                        },
+                        "coinbase wallet": {
+                            ios: "https://apps.apple.com/app/coinbase-wallet/id1278383455",
+                            android: "https://play.google.com/store/apps/details?id=org.toshi"
+                        },
+                        "phantom (eth)": {
+                            ios: "https://apps.apple.com/app/phantom-solana-wallet/id1598432977",
+                            android: "https://play.google.com/store/apps/details?id=app.phantom"
+                        }
+                    };
+                    
+                    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+                    const isAndroid = /android/i.test(navigator.userAgent);
+                    const storeLink = appStoreLinks[walletName.toLowerCase()];
+                    
+                    if (storeLink && (isIOS || isAndroid)) {
+                        const url = isIOS ? storeLink.ios : storeLink.android;
+                        console.log(`Fallback to app store: ${url}`);
+                        window.open(url, '_blank');
+                    }
+                }, 2500); // 2.5 second delay to allow app to open
                 
                 return true;
             } catch (error) {
-                console.error("Failed to open deep link:", error);
-                
-                // Method 3: Create a temporary link and click it
-                try {
-                    const link = document.createElement('a');
-                    link.href = deepLink;
-                    link.target = '_blank';
-                    link.rel = 'noopener noreferrer';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    return true;
-                } catch (linkError) {
-                    console.error("Failed to create and click link:", linkError);
-                    return false;
-                }
+                console.error("Failed to open mobile wallet:", error);
+                return false;
             }
         }
         
@@ -430,69 +458,47 @@
         return false;
     }
 
-    // Enhanced mobile connection waiting with multiple wallet detection
-    function waitForMobileConnection(timeout = 30000) {
+    // Fixed mobile connection waiting with better wallet detection
+    function waitForMobileConnection(timeout = 15000) {
         return new Promise((resolve) => {
             const startTime = Date.now();
-            const checkInterval = 1000; // Check every second
+            const checkInterval = 500; // Check every 500ms for faster response
             
             const checkConnection = async () => {
                 try {
-                    // Check for multiple wallet providers
-                    if (window.ethereum) {
-                        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-                        if (accounts && accounts.length > 0) {
-                            resolve({ success: true, accounts, provider: window.ethereum });
-                            return;
-                        }
-                    }
-                    
-                    // Check for specific wallet objects
-                    const walletChecks = [
-                        { provider: window.phantom?.ethereum, name: 'phantom' },
-                        { provider: window.trustWallet, name: 'trust' },
-                        { provider: window.coinbaseWalletExtension, name: 'coinbase' },
-                        { provider: window.tronWeb, name: 'tronlink', isTron: true }
-                    ];
-                    
-                    for (const wallet of walletChecks) {
-                        if (wallet.provider) {
-                            if (wallet.isTron) {
-                                // Special handling for Tron
-                                if (wallet.provider.defaultAddress && wallet.provider.defaultAddress.base58) {
-                                    resolve({ success: true, accounts: [wallet.provider.defaultAddress.base58], provider: wallet.provider, isTron: true });
-                                    return;
-                                }
-                            } else if (typeof wallet.provider.request === 'function') {
-                                try {
-                                    const accounts = await wallet.provider.request({ method: 'eth_accounts' });
-                                    if (accounts && accounts.length > 0) {
-                                        resolve({ success: true, accounts, provider: wallet.provider });
-                                        return;
-                                    }
-                                } catch (error) {
-                                    // Continue checking other wallets
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Check for Solana wallet
-                    if (window.solana && typeof window.solana.connect === 'function') {
+                    // Primary check: window.ethereum (most mobile wallets inject this)
+                    if (window.ethereum && typeof window.ethereum.request === 'function') {
                         try {
-                            // Try to check if already connected
-                            if (window.solana.isConnected && window.solana.publicKey) {
-                                resolve({ 
-                                    success: true, 
-                                    accounts: [window.solana.publicKey.toString()], 
-                                    provider: window.solana,
-                                    isSolana: true 
-                                });
+                            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                            if (accounts && accounts.length > 0) {
+                                resolve({ success: true, accounts, provider: window.ethereum });
                                 return;
                             }
                         } catch (error) {
-                            // Continue checking
+                            // Continue to other checks if eth_accounts fails
                         }
+                    }
+                    
+                    // Check for Solana (Phantom)
+                    if (window.solana && window.solana.isConnected && window.solana.publicKey) {
+                        resolve({ 
+                            success: true, 
+                            accounts: [window.solana.publicKey.toString()], 
+                            provider: window.solana,
+                            isSolana: true 
+                        });
+                        return;
+                    }
+                    
+                    // Check for Tron (TronLink)
+                    if (window.tronWeb && window.tronWeb.defaultAddress && window.tronWeb.defaultAddress.base58) {
+                        resolve({ 
+                            success: true, 
+                            accounts: [window.tronWeb.defaultAddress.base58], 
+                            provider: window.tronWeb,
+                            isTron: true 
+                        });
+                        return;
                     }
                 } catch (error) {
                     console.log("Still waiting for mobile connection...", error);
