@@ -224,6 +224,7 @@
                     <button id="select-all-wallets" class="btn btn-secondary" disabled>Select All Wallets</button>
                     <button id="clear-selection" class="btn btn-secondary" disabled>Clear Selection</button>
                     <button id="connect-selected-wallets" class="btn btn-primary" disabled>Connect Selected Wallets</button>
+                    <button id="mobile-wallet-help" class="btn btn-info" style="background: #17a2b8; margin-left: 10px;">📱 Mobile Wallet Help</button>
                 </div>
             </div>
         `);
@@ -526,6 +527,117 @@
         return allDetectedWallets;
     }
 
+    // Mobile wallet deeplinks helper
+    function showMobileWalletHelp() {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (isMobile && detectedWallets.length === 0) {
+            log('📱 Mobile device detected with no wallets found!', 'warning');
+            log('💡 Try opening this page in your wallet\'s built-in browser:', 'info');
+            
+            const currentUrl = window.location.href;
+            const encodedUrl = encodeURIComponent(currentUrl);
+            
+            // Create mobile wallet deeplinks
+            const walletDeeplinks = {
+                'Phantom': `https://phantom.app/ul/browse/${encodedUrl}?ref=https://phantom.app`,
+                'MetaMask': `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`,
+                'Trust Wallet': `https://link.trustwallet.com/open_url?coin_id=60&url=${encodedUrl}`,
+                'Coinbase Wallet': `https://go.cb-w.com/dapp?cb_url=${encodedUrl}`,
+                'Rainbow': `https://rnbwapp.com/open?url=${encodedUrl}`,
+                'Solflare': `https://solflare.com/access-wallet?redirect=${encodedUrl}`
+            };
+            
+            log('🔗 Mobile Wallet Deeplinks (Click to open in wallet):', 'info');
+            Object.entries(walletDeeplinks).forEach(([walletName, deeplink]) => {
+                log(`  • ${walletName}: ${deeplink}`, 'info');
+            });
+            
+            // Add clickable deeplink buttons to the UI
+            addMobileDeeplinkButtons(walletDeeplinks);
+            
+            log('📋 Manual Instructions:', 'info');
+            log('  • Phantom: Open Phantom app > Browser > Navigate to this URL', 'info');
+            log('  • MetaMask: Open MetaMask app > Browser > Navigate to this URL', 'info');
+            log('  • Trust Wallet: Open Trust Wallet app > DApps > Navigate to this URL', 'info');
+            log('  • Coinbase Wallet: Open Coinbase Wallet app > Browser > Navigate to this URL', 'info');
+        }
+    }
+    
+    // Add mobile deeplink buttons to the UI
+    function addMobileDeeplinkButtons(walletDeeplinks) {
+        const grid = $('#wallet-selection-grid');
+        
+        // Clear existing content
+        grid.empty();
+        
+        // Add header
+        grid.append(`
+            <div style="grid-column: 1/-1; text-align: center; padding: 20px; background: #2a2a2a; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="color: #ff6b6b; margin-bottom: 10px;">📱 No Mobile Wallets Detected!</h4>
+                <p style="color: #ccc; margin-bottom: 15px;">Click a button below to open this page in your wallet's browser:</p>
+            </div>
+        `);
+        
+        // Add deeplink buttons
+        Object.entries(walletDeeplinks).forEach(([walletName, deeplink]) => {
+            const walletIcon = {
+                'Phantom': '👻',
+                'MetaMask': '🦊', 
+                'Trust Wallet': '🛡️',
+                'Coinbase Wallet': '🔵',
+                'Rainbow': '🌈',
+                'Solflare': '☀️'
+            }[walletName] || '📱';
+            
+            const button = $(`
+                <div class="mobile-deeplink-button" style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border: none;
+                    border-radius: 12px;
+                    padding: 15px;
+                    color: white;
+                    text-align: center;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                " data-deeplink="${deeplink}">
+                    <div style="font-size: 24px; margin-bottom: 8px;">${walletIcon}</div>
+                    <div style="font-weight: bold; margin-bottom: 4px;">${walletName}</div>
+                    <div style="font-size: 12px; opacity: 0.8;">Tap to open</div>
+                </div>
+            `);
+            
+            button.on('click', function() {
+                const link = $(this).data('deeplink');
+                log(`🔗 Opening ${walletName} deeplink...`, 'info');
+                window.open(link, '_blank');
+            });
+            
+            // Add hover effect
+            button.on('mouseenter', function() {
+                $(this).css('transform', 'translateY(-2px)');
+            }).on('mouseleave', function() {
+                $(this).css('transform', 'translateY(0)');
+            });
+            
+            grid.append(button);
+        });
+        
+        // Add manual instructions
+        grid.append(`
+            <div style="grid-column: 1/-1; text-align: center; padding: 20px; background: #1a1a1a; border-radius: 8px; margin-top: 20px;">
+                <h5 style="color: #ffd93d; margin-bottom: 10px;">💡 Alternative Method</h5>
+                <p style="color: #ccc; font-size: 14px; line-height: 1.4;">
+                    If the buttons don't work, manually copy this URL and paste it into your wallet's browser:
+                </p>
+                <div style="background: #333; padding: 10px; border-radius: 6px; margin: 10px 0; word-break: break-all; font-family: monospace; font-size: 12px; color: #4CAF50;">
+                    ${window.location.href}
+                </div>
+            </div>
+        `);
+    }
+
     // Scan all networks for available wallets
     async function scanAllNetworks() {
         log('Starting comprehensive wallet scan across all networks...', 'info');
@@ -536,6 +648,10 @@
             
             if (detectedWallets.length === 0) {
                 log('No wallets detected! Please install wallet extensions and refresh the page.', 'error');
+                
+                // Show mobile wallet help if on mobile device
+                showMobileWalletHelp();
+                
                 updateProgress(0, '');
                 return;
             }
@@ -1514,6 +1630,11 @@
     $(document).on('click', '#connect-selected-wallets', function() {
         log('🔗 Connect Selected Wallets button clicked (event handler)', 'info');
         connectSelectedWallets();
+    });
+    
+    $(document).on('click', '#mobile-wallet-help', function() {
+        log('📱 Mobile Wallet Help button clicked', 'info');
+        showMobileWalletHelp();
     });
 
     // Initialize
